@@ -3,11 +3,14 @@
 #include <moveit/move_group_interface/move_group.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <tf/transform_listener.h>
+#include <osrf_gear/VacuumGripperControl.h>
 
 class PickAndPlace {
 private:
 	ros::NodeHandle nh_;
 	geometry_msgs::Pose _homePose;
+	geometry_msgs::Quaternion _home_orientation;
+	double _z_offset_from_part;
 
 	moveit::planning_interface::MoveGroup _manipulatorgroup;
 	tf::StampedTransform _tray_to_world_;
@@ -24,6 +27,7 @@ private:
 	void initialSetup();
 
 public:
-	PickAndPlace(ros::NodeHandle n);
+	PickAndPlace(ros::NodeHandle n, double* initialPositions, double _z_offset_from_part);
 	void performPickAndPlace();
+	void pickNextPart();
 };
