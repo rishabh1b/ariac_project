@@ -13,7 +13,16 @@
 <param name = "joint4" value = "3.9" />  <!-- -1.57 -->
 <param name = "joint5" value = "4.7" />   <!-- 1.57 -->
 <param name = "joint6" value = "0" />
+
 <param name = "z_offset" value = "0.02" />
+<!--param name = "x_test" value = "-0.233" />
+<param name = "y_test" value = "-0.6" />
+<param name = "z_test" value = "0.723" -->
+
+<param name = "x_test" value = "-0.1" />
+<param name = "y_test" value = "0.164" />
+<param name = "z_test" value = "0.724" />
+
 </node>
 
 </launch>

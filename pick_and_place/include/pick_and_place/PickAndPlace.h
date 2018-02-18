@@ -23,13 +23,14 @@ private:
 
 	float _tray_location_x, _tray_location_y, _tray_location_z;
 
-	void attainPosition(float x, float y, float z);
+	double test_x, test_y, test_z;
 
 	std::vector<double> home_joint_values, base_link_end_values, return_home_joint_values;
 	void initialSetup();
+	void goHome();
 
 public:
-	PickAndPlace(ros::NodeHandle n, double* initialPositions, double _z_offset_from_part);
+	PickAndPlace(ros::NodeHandle n, double* initialPositions, double _z_offset_from_part, double* part_location);
 	void performPickAndPlace();
 	void pickNextPart();
 	void place();
