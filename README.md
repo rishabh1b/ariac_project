@@ -8,7 +8,7 @@ ARIAC: Agile Robots for Industrial Automation Competition. The project is for im
 
 3. ROS Indigo or ROS kinetic
 
-4. Moveit! and Moveit! for ARIAC packages. Follow instructions from [here](http://wiki.ros.org/ariac/Tutorials/MoveItInterface). Choose the correct ROS version. After you are done, put ```source install/setup.bash``` in the ```~/.bashrc```. Make sure you check where Moveit is working properly and you can do planning by using following commands and following the tutorial page-
+4. Moveit! and Moveit! for ARIAC packages. Follow instructions from [here](http://wiki.ros.org/ariac/Tutorials/MoveItInterface). Choose the correct ROS version. After you are done, put ```source install/setup.bash``` from where you installed moveit packages in the ```~/.bashrc```. Make sure you check where Moveit is working properly and you can do planning by using following commands and following the tutorial page-
 ```
  rosrun osrf_gear gear.py -f `catkin_find --share osrf_gear`/config/sample.yaml
  ```
