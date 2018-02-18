@@ -19,8 +19,16 @@
 <param name = "y_test" value = "-0.6" />
 <param name = "z_test" value = "0.723" -->
 
-<param name = "x_test" value = "-0.1" />
+<!--param name = "x_test" value = "-0.1" />
 <param name = "y_test" value = "0.164" />
+<param name = "z_test" value = "0.724" -->
+
+<!--param name = "x_test" value = "-0.5" />
+<param name = "y_test" value = "0.03" />
+<param name = "z_test" value = "0.724" -->
+
+<param name = "x_test" value = "-0.5" />
+<param name = "y_test" value = "0.03" />
 <param name = "z_test" value = "0.724" />
 
 </node>
