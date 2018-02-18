@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
 <launch>
-<node pkg = "osrf_gear" name = "gear_sim" type = "gear.py" args = "-f $(find osrf_gear)/config/qual1a.yaml /home/rishabh/809B/qual1/src/ariac_qual_1/config/Config_Qual1.yaml"/>
+<node pkg = "osrf_gear" name = "gear_sim" type = "gear.py" args = "-f $(find osrf_gear)/config/qual1a.yaml $(find ariac_qual_1)/config/Config_Qual1.yaml"/>
 
 </launch>

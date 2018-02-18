@@ -10,6 +10,8 @@ private:
 	ros::NodeHandle nh_;
 	geometry_msgs::Pose _homePose;
 	geometry_msgs::Quaternion _home_orientation;
+	osrf_gear::VacuumGripperControl gripper_srv;
+	ros::ServiceClient gripper_client;
 	double _z_offset_from_part;
 
 	moveit::planning_interface::MoveGroup _manipulatorgroup;
@@ -23,11 +25,12 @@ private:
 
 	void attainPosition(float x, float y, float z);
 
-	std::vector<double> home_joint_values;
+	std::vector<double> home_joint_values, base_link_end_values, return_home_joint_values;
 	void initialSetup();
 
 public:
 	PickAndPlace(ros::NodeHandle n, double* initialPositions, double _z_offset_from_part);
 	void performPickAndPlace();
 	void pickNextPart();
+	void place();
 };
