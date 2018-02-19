@@ -29,10 +29,13 @@ OrderManager::OrderManager(ros::NodeHandle n) {
 	_curr_piston_part_count = 1;
 	_curr_gear_part_count = 1;
 	_once_callback_done = false;
+	_actual_piston_part_count = 0;
+	_actual_gear_part_count = 0;
+
 	this->nh_ = n;
 	service = nh_.advertiseService("logical_camera_server", &OrderManager::get_pose, this);
 	orders_subscriber = nh_.subscribe("/ariac/orders", 10, &OrderManager::order_callback, this);
-
+  incrementservice = nh_.advertiseService("incrementPart", &OrderManager::incrementCompletedPart, this);
 }
 
 void OrderManager::order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
@@ -65,15 +68,15 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
 
 	if(req.request_msg == true) {
 		ROS_INFO("sending back response");
-		ROS_INFO_STREAM("Piston Required: " << _piston_rod_part_count);
+		ROS_INFO_STREAM("Piston Completed: " << _actual_piston_part_count);
 		// geometry_msgs::TransformStamped obj_pose;
 
-		if (_curr_gear_part_count == _gear_part_count && _curr_piston_part_count == _gear_part_count) {
+		if (_actual_piston_part_count == _piston_rod_part_count && _actual_gear_part_count == _gear_part_count) {
 			res.order_completed = true;
 			return true;
 		}
 
-		if (_curr_piston_part_count <= _piston_rod_part_count) {
+		if (_actual_piston_part_count < _piston_rod_part_count) {
 			std::string part_count_string;
 			std::stringstream ss;
 			ss <<_curr_piston_part_count;
@@ -82,7 +85,7 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
         	_curr_piston_part_count++;
         	ROS_INFO_STREAM(srcFrame);
 		}
-        else if(_curr_gear_part_count <= _gear_part_count) {
+    else if(_actual_gear_part_count < _gear_part_count) {
             std::string part_count_string;
 			std::stringstream ss;
 			ss <<_curr_gear_part_count;
@@ -120,6 +123,18 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
 
 	return true;
 }
+
+bool OrderManager::incrementCompletedPart(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
+  ROS_WARN("Came in increment service");
+  if (_actual_piston_part_count < _piston_rod_part_count) {
+    _actual_piston_part_count++;
+  }
+  else if (_actual_gear_part_count < _gear_part_count){
+    _actual_gear_part_count++;
+  }
+  return true;
+}
+
 
 int main(int argc, char **argv)
 {

@@ -7,6 +7,7 @@
 #include <tf/transform_listener.h>
 #include <osrf_gear/VacuumGripperControl.h>
 #include <geometry_msgs/Vector3.h>
+#include <osrf_gear/VacuumGripperState.h>
 
 class PickAndPlace {
 private:
@@ -15,6 +16,7 @@ private:
 	geometry_msgs::Quaternion _home_orientation;
 	osrf_gear::VacuumGripperControl gripper_srv;
 	ros::ServiceClient gripper_client;
+	ros::Subscriber gripperStateSubscriber;
 	double _z_offset_from_part;
 
 	moveit::planning_interface::MoveGroup _manipulatorgroup;
@@ -29,6 +31,9 @@ private:
 	double test_x, test_y, test_z;
 
 	std::vector<double> home_joint_values, base_link_end_values, return_home_joint_values;
+
+	bool _isPartAttached;
+
 	void initialSetup();
 	void goHome();
 	float getRandomValue();
@@ -37,6 +42,7 @@ public:
 	PickAndPlace(ros::NodeHandle n, double* initialPositions, double _z_offset_from_part, double* part_location, float tray_length = 0.2);
 	void performPickAndPlace();
 	void pickNextPart();
-	void place();
-	void pickNextPart(geometry_msgs::Vector3 obj_pose);
+	bool place();
+	bool pickNextPart(geometry_msgs::Vector3 obj_pose);
+    void gripperStateCallback(const osrf_gear::VacuumGripperState::ConstPtr& msg);
 };

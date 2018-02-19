@@ -30,6 +30,9 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
   // Set the client for Gripper control service
   gripper_client = nh_.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/gripper/control");
 
+  // Set the Gripper State Subsrciber
+  gripperStateSubscriber = nh_.subscribe("/ariac/gripper/state", 10, &PickAndPlace::gripperStateCallback, this);
+
   for (size_t i = 1; i < 7; i++) {
   	home_joint_values[i] = initialjoints[i];
   }
@@ -46,6 +49,8 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
   _tray_length = tray_length;
 
    srand (static_cast <unsigned> (time(0)));
+
+   _isPartAttached = false;
 }
 // Method to bring UR10 in proper position and orientation
 void PickAndPlace::initialSetup() {
@@ -84,7 +89,7 @@ void PickAndPlace::initialSetup() {
 
 }
 
-void PickAndPlace::pickNextPart(geometry_msgs::Vector3 obj_pose) {
+bool PickAndPlace::pickNextPart(geometry_msgs::Vector3 obj_pose) {
 	ROS_INFO("Picking the Next Part");
 	ros::AsyncSpinner spinner(1);
   	spinner.start();
@@ -110,7 +115,10 @@ void PickAndPlace::pickNextPart(geometry_msgs::Vector3 obj_pose) {
    }
 
   // TODO: Confirm the state on the vaccum gripper before continuing
+  //if (!_isPartAttached)
+  //	return false; 
   // Wait for a bit 
+  ros::spinOnce();
   sleep(3.0);
 
   // Lift the arm a little up
@@ -118,6 +126,7 @@ void PickAndPlace::pickNextPart(geometry_msgs::Vector3 obj_pose) {
   _manipulatorgroup.setPoseTarget(target_pose1);
   _manipulatorgroup.move();
    sleep(3.0);
+  return _isPartAttached;
 }
 
 void PickAndPlace::pickNextPart() {
@@ -156,7 +165,7 @@ void PickAndPlace::pickNextPart() {
    sleep(3.0);
 }
 
-void PickAndPlace::place() {
+bool PickAndPlace::place() {
     ROS_INFO("Placing the part");
 	ros::AsyncSpinner spinner(1);
   	spinner.start();
@@ -166,6 +175,10 @@ void PickAndPlace::place() {
 	 bool success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
     sleep(5.0);
+    ros::spinOnce();
+    sleep(1.0);
+    if (!_isPartAttached)
+  	  return false; 
 
 	// place it in the drop location on the AGV
 	geometry_msgs::Pose target_pose1;
@@ -178,6 +191,9 @@ void PickAndPlace::place() {
 	_manipulatorgroup.setPoseTarget(target_pose1);
 	_manipulatorgroup.move();
     sleep(2.0);
+
+    if (!_isPartAttached)
+  	  return false; 
 
     // drop the part
     gripper_srv.request.enable = false;
@@ -192,6 +208,11 @@ void PickAndPlace::place() {
 	success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
     sleep(5.0);
+    return true;
+}
+
+void PickAndPlace::gripperStateCallback(const osrf_gear::VacuumGripperState::ConstPtr& msg) {
+	_isPartAttached = msg->attached;
 }
 
 void PickAndPlace::goHome() {
