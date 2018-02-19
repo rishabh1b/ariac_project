@@ -142,6 +142,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/localisation_node.cpp)
 add_executable(office_manager_node src/OrderManager.cpp)
+add_executable(office_manager_node_2 src/OrderManager2.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -156,7 +157,7 @@ add_executable(office_manager_node src/OrderManager.cpp)
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
-#target_link_libraries(logical_camera_node ${catkin_LIBRARIES})
+target_link_libraries(office_manager_node ${catkin_LIBRARIES})
 add_dependencies(office_manager_node ${localisation_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 #############
 ## Install ##

@@ -129,6 +129,11 @@ include_directories(
    src/PickAndPlace.cpp
  )
 
+ add_library(qual1b
+   src/PickAndPlace2.cpp
+ )
+
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -139,6 +144,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node src/PickAndPlace.cpp)
 add_executable(floor_manager_node src/FloorManager.cpp)
+add_executable(floor_manager_node src/FloorManager2.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -153,7 +159,9 @@ add_executable(floor_manager_node src/FloorManager.cpp)
  target_link_libraries(${PROJECT_NAME}_node
    ${catkin_LIBRARIES}
 )
-target_link_libraries(floor_manager_node ${catkin_LIBRARIES}    ${PROJECT_NAME})
+
+target_link_libraries(floor_manager_node ${catkin_LIBRARIES} ${PROJECT_NAME})
+target_link_libraries(floor_manager_node_2 ${catkin_LIBRARIES} qual1b)
 
 #############
 ## Install ##
