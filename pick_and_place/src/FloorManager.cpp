@@ -9,6 +9,7 @@ int main(int argc, char* argv[]) {
 
 	double initialjoints[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     double z_offset_from_part, x_test, y_test, z_test; // Some Distance offset in Z before activating suction
+    float tray_length;
 
 	private_node_handle.getParam("joint1", initialjoints[1]);
 	private_node_handle.getParam("joint2", initialjoints[2]);
@@ -20,18 +21,19 @@ int main(int argc, char* argv[]) {
 	private_node_handle.getParam("x_test", x_test);
 	private_node_handle.getParam("y_test", y_test);
 	private_node_handle.getParam("z_test", z_test);
+	private_node_handle.getParam("tray_length", tray_length);
 
 	double part_location[3] = {x_test, y_test, z_test};
 
     // ROS_INFO_STREAM("Initial Joint 6: " << initialjoints[6] << "\n");
 
-	PickAndPlace pickPlace(n, initialjoints, z_offset_from_part, part_location);
+	PickAndPlace pickPlace(n, initialjoints, z_offset_from_part, part_location, tray_length);
 
 	ros::ServiceClient nextPointclient = n.serviceClient<localisation::request_logical_pose>("logical_camera_server");
     localisation::request_logical_pose pointsrv;
     pointsrv.request.request_msg = true;
 
-
+    // This sping can be removed
 	ros::spinOnce();
 
 	geometry_msgs::Vector3 obj_pose;

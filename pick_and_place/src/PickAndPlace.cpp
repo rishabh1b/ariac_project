@@ -1,6 +1,6 @@
 #include "pick_and_place/PickAndPlace.h"
 
-PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_offset_from_part, double* part_location)
+PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_offset_from_part, double* part_location, float tray_length)
 	:_manipulatorgroup("manipulator") {
 	this->nh_ = nh_;
 	this->_z_offset_from_part = z_offset_from_part;
@@ -42,6 +42,10 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
   test_y = part_location[1];
   test_z = part_location[2];
 
+   // Assumed tray length
+  _tray_length = tray_length;
+
+   srand (static_cast <unsigned> (time(0)));
 }
 // Method to bring UR10 in proper position and orientation
 void PickAndPlace::initialSetup() {
@@ -167,8 +171,9 @@ void PickAndPlace::place() {
 	geometry_msgs::Pose target_pose1;
 	target_pose1.orientation = _home_orientation;
 
-  	target_pose1.position.x = _tray_location_x;
-  	target_pose1.position.y = _tray_location_y;
+    ROS_INFO_STREAM("Random Value Obtained: " << getRandomValue());
+  	target_pose1.position.x = _tray_location_x + getRandomValue();
+  	target_pose1.position.y = _tray_location_y + getRandomValue();
   	target_pose1.position.z = _tray_location_z + _z_offset_from_part * 5;
 	_manipulatorgroup.setPoseTarget(target_pose1);
 	_manipulatorgroup.move();
@@ -201,12 +206,19 @@ void PickAndPlace::goHome() {
 
 }
 
+float PickAndPlace::getRandomValue() {
+	// ROS_WARN("Tray Length is: %f", _tray_length);
+	return static_cast <float> (rand()) / (static_cast <float> (RAND_MAX/_tray_length));
+}
+
 int main(int argc, char* argv[]) {
 	ros::init(argc, argv, "simple_pick_and_place");
 	ros::NodeHandle n;
 	ros::NodeHandle private_node_handle("~");
     double initialjoints[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-    double z_offset_from_part, x_test, y_test, z_test; // Some Distance offset in Z before activating suction
+    // Some Distance offset in Z before activating suction
+    double z_offset_from_part, x_test, y_test, z_test; 
+    float tray_length;
 
 	private_node_handle.getParam("joint1", initialjoints[1]);
 	private_node_handle.getParam("joint2", initialjoints[2]);
@@ -218,11 +230,12 @@ int main(int argc, char* argv[]) {
 	private_node_handle.getParam("x_test", x_test);
 	private_node_handle.getParam("y_test", y_test);
 	private_node_handle.getParam("z_test", z_test);
+	private_node_handle.getParam("tray_length", tray_length);
 
 	double part_location[3] = {x_test, y_test, z_test};
 
     // ROS_INFO_STREAM("Initial Joint 6: " << initialjoints[6] << "\n");
-	PickAndPlace pickPlace(n, initialjoints, z_offset_from_part, part_location);
+	PickAndPlace pickPlace(n, initialjoints, z_offset_from_part, part_location, tray_length);
 	pickPlace.pickNextPart();
 	pickPlace.place();
 
