@@ -80,6 +80,42 @@ void PickAndPlace::initialSetup() {
 
 }
 
+void PickAndPlace::pickNextPart(geometry_msgs::Vector3 obj_pose) {
+	ROS_INFO("Picking the Next Part");
+	ros::AsyncSpinner spinner(1);
+  	spinner.start();
+  	sleep(2.0);
+
+	geometry_msgs::Pose target_pose1;
+	target_pose1.orientation = _home_orientation;
+
+	// Starting Postion before activation suction. Hardcoded for now for a single piece
+  	target_pose1.position.x = obj_pose.x;
+  	target_pose1.position.y = obj_pose.y;
+  	target_pose1.position.z = obj_pose.z + _z_offset_from_part;
+	_manipulatorgroup.setPoseTarget(target_pose1);
+	_manipulatorgroup.move();
+    sleep(3.0);
+
+    // Catch the Object by activating the suction
+    gripper_srv.request.enable = true;
+
+    if (gripper_client.call(gripper_srv))
+   {
+  	ROS_INFO("Gripper Service Successfull");
+   }
+
+  // TODO: Confirm the state on the vaccum gripper before continuing
+  // Wait for a bit 
+  sleep(3.0);
+
+  // Lift the arm a little up
+  target_pose1.position.z = 0.723 + _z_offset_from_part * 5;
+  _manipulatorgroup.setPoseTarget(target_pose1);
+  _manipulatorgroup.move();
+   sleep(3.0);
+}
+
 void PickAndPlace::pickNextPart() {
 	ROS_INFO("Picking the First Part");
 	ros::AsyncSpinner spinner(1);
@@ -133,7 +169,7 @@ void PickAndPlace::place() {
 
   	target_pose1.position.x = _tray_location_x;
   	target_pose1.position.y = _tray_location_y;
-  	target_pose1.position.z = _tray_location_z + _z_offset_from_part * 3;
+  	target_pose1.position.z = _tray_location_z + _z_offset_from_part * 5;
 	_manipulatorgroup.setPoseTarget(target_pose1);
 	_manipulatorgroup.move();
     sleep(2.0);

@@ -4,6 +4,7 @@
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <tf/transform_listener.h>
 #include <osrf_gear/VacuumGripperControl.h>
+#include <geometry_msgs/Vector3.h>
 
 class PickAndPlace {
 private:
@@ -34,4 +35,5 @@ public:
 	void performPickAndPlace();
 	void pickNextPart();
 	void place();
+	void pickNextPart(geometry_msgs::Vector3 obj_pose);
 };

@@ -7,6 +7,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_srvs
   trajectory_msgs
+  localisation
+  pick_and_place
 )
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -14,7 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 # catkin_python_setup()
 
-catkin_package()
+catkin_package(
+ CATKIN_DEPENDS localisation pick_and_place)
 
 ###########
 ## Build ##
@@ -24,8 +27,11 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a C++ executable
 add_executable(ariac_example_node src/ariac_example_node.cpp)
+#add_executable(floor_manager_node src/FloorManager.cpp)
 add_dependencies(ariac_example_node ${catkin_EXPORTED_TARGETS})
+#add_dependencies(floor_manager_node ${localisation_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(ariac_example_node ${catkin_LIBRARIES})
+#target_link_libraries(floor_manager_node ${catkin_LIBRARIES})
 
 #############
 ## Install ##

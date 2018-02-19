@@ -9,10 +9,28 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <depend>osrf_gear</depend>
+  <!--depend>osrf_gear</depend>
   <depend>roscpp</depend>
   <depend>sensor_msgs</depend>
   <depend>std_srvs</depend>
   <depend>trajectory_msgs</depend>
+  <depend>localisation</depend>
+  <depend>pick_and_place</depend-->
+
+  <build_depend>osrf_gear</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>localisation</build_depend>
+  <build_depend>pick_and_place</build_depend>
+  <build_depend>std_srvs</build_depend>
+  <build_depend>trajectory_msgs</build_depend>
+
+  <exec_depend>osrf_gear</exec_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
+  <exec_depend>trajectory_msgs</exec_depend>
+  <exec_depend>localisation</exec_depend>
+  <exec_depend>pick_and_place</exec_depend>
 
 </package>
