@@ -31,6 +31,7 @@ private:
 	double test_x, test_y, test_z;
 
 	std::vector<double> home_joint_values, base_link_end_values, return_home_joint_values;
+	int index;
 
 	bool _isPartAttached;
 

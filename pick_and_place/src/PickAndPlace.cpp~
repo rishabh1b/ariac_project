@@ -51,8 +51,6 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
    srand (static_cast <unsigned> (time(0)));
 
    _isPartAttached = false;
-
-   index = 0;
 }
 // Method to bring UR10 in proper position and orientation
 void PickAndPlace::initialSetup() {
@@ -82,10 +80,10 @@ void PickAndPlace::initialSetup() {
   _home_orientation.z = transform.getRotation().z();
   _home_orientation.w = transform.getRotation().w();
 
-  /*ROS_INFO_STREAM("Home Orientation X: " << _home_orientation.x);
+  ROS_INFO_STREAM("Home Orientation X: " << _home_orientation.x);
   ROS_INFO_STREAM("Home Orientation Y: " << _home_orientation.y);
   ROS_INFO_STREAM("Home Orientation Z: " << _home_orientation.z);
-  ROS_INFO_STREAM("Home Orientation W: " << _home_orientation.w);*/
+  ROS_INFO_STREAM("Home Orientation W: " << _home_orientation.w);
 
   // Setup the End of BaseLink Values - joint values before dropping off the part at the end of the base link
   base_link_end_values = home_joint_values;
@@ -173,9 +171,6 @@ void PickAndPlace::pickNextPart() {
 }
 
 bool PickAndPlace::place() {
-   float position_x[5] = {0, -0.1, 0, 0.1, 0};
-   float position_y[5] = {0, 0.1, 0.1, 0, 0.25};
-
     ROS_INFO("Placing the part");
 	ros::AsyncSpinner spinner(1);
   	spinner.start();
@@ -195,10 +190,8 @@ bool PickAndPlace::place() {
 	target_pose1.orientation = _home_orientation;
 
     ROS_INFO_STREAM("Random Value Obtained: " << getRandomValue());
-    target_pose1.position.x = _tray_location_x + position_x[index];
-  	target_pose1.position.y = _tray_location_y + position_y[index];
-  	// target_pose1.position.x = _tray_location_x + getRandomValue();
-  	// target_pose1.position.y = _tray_location_y + getRandomValue();
+  	target_pose1.position.x = _tray_location_x + getRandomValue();
+  	target_pose1.position.y = _tray_location_y + getRandomValue();
   	target_pose1.position.z = _tray_location_z + _z_offset_from_part * 5;
 	_manipulatorgroup.setPoseTarget(target_pose1);
 	_manipulatorgroup.move();
@@ -220,7 +213,6 @@ bool PickAndPlace::place() {
 	success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
     sleep(5.0);
-    index++;
     return true;
 }
 

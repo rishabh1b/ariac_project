@@ -33,6 +33,7 @@ private:
 	std::vector<double> home_joint_values, base_link_end_values, return_home_joint_values;
 
 	bool _isPartAttached;
+	int index;
 
 	void initialSetup();
 	void goHome();

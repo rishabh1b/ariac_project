@@ -167,48 +167,54 @@ void PickAndPlace::pickNextPart() {
 }
 
 bool PickAndPlace::place() {
-    ROS_INFO("Placing the part");
-	ros::AsyncSpinner spinner(1);
-  	spinner.start();
-  	sleep(2.0);
+   float position_x[5] = {0, -0.1, 0, 0.1, 0};
+   float position_y[5] = {0, 0.1, 0.1, 0, 0.25};
 
-	_manipulatorgroup.setJointValueTarget(base_link_end_values);
-	 bool success = _manipulatorgroup.plan(my_plan);
+    ROS_INFO("Placing the part");
+  ros::AsyncSpinner spinner(1);
+    spinner.start();
+    sleep(2.0);
+
+  _manipulatorgroup.setJointValueTarget(base_link_end_values);
+   bool success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
     sleep(5.0);
     ros::spinOnce();
     sleep(1.0);
     if (!_isPartAttached)
-  	  return false; 
+      return false; 
 
-	// place it in the drop location on the AGV
-	geometry_msgs::Pose target_pose1;
-	target_pose1.orientation = _home_orientation;
+  // place it in the drop location on the AGV
+  geometry_msgs::Pose target_pose1;
+  target_pose1.orientation = _home_orientation;
 
     ROS_INFO_STREAM("Random Value Obtained: " << getRandomValue());
-  	target_pose1.position.x = _tray_location_x + getRandomValue();
-  	target_pose1.position.y = _tray_location_y + getRandomValue();
-  	target_pose1.position.z = _tray_location_z + _z_offset_from_part * 5;
-	_manipulatorgroup.setPoseTarget(target_pose1);
-	_manipulatorgroup.move();
+    target_pose1.position.x = _tray_location_x + position_x[index];
+    target_pose1.position.y = _tray_location_y + position_y[index];
+    // target_pose1.position.x = _tray_location_x + getRandomValue();
+    // target_pose1.position.y = _tray_location_y + getRandomValue();
+    target_pose1.position.z = _tray_location_z + _z_offset_from_part * 5;
+  _manipulatorgroup.setPoseTarget(target_pose1);
+  _manipulatorgroup.move();
     sleep(2.0);
 
     if (!_isPartAttached)
-  	  return false; 
+      return false; 
 
     // drop the part
     gripper_srv.request.enable = false;
     gripper_client.call(gripper_srv);
 
   // Return to the Home Position
-  	_manipulatorgroup.setJointValueTarget(base_link_end_values);
-	 success = _manipulatorgroup.plan(my_plan);
+    _manipulatorgroup.setJointValueTarget(base_link_end_values);
+   success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
     sleep(3.0);
     _manipulatorgroup.setJointValueTarget(home_joint_values);
-	success = _manipulatorgroup.plan(my_plan);
+  success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
     sleep(5.0);
+    index++;
     return true;
 }
 
