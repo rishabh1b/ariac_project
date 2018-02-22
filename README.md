@@ -27,6 +27,23 @@ git clone https://github.com/rishabh1b/ariac_project
 cd ~/catkin_ws
 catkin_make
 ```
+
+## Running a Basic Demo
+Following commands will run qualifier 1a
+
+Terminal 1 - 
+```
+$ cd ~/catkin_ws
+$ source devel/setup.bash
+$ roslaunch ariac_qual_1 gear_bringup.launch
+```
+Terminal 2 - 
+```
+$ cd ~/catkin_ws
+$ source devel/setup.bash
+$ roslaunch ariac_qual_1 competition.launch
+```
+
 ## For Contributing
 _Make sure you work in your own branch_
 
