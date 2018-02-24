@@ -23,6 +23,7 @@ ARIAC: Agile Robots for Industrial Automation Competition. The project is for im
 ## Installation
 ```
 mkdir -p ~/catkin_ws/src
+cd catkin_ws/src
 git clone https://github.com/rishabh1b/ariac_project
 cd ~/catkin_ws
 catkin_make
