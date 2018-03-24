@@ -57,6 +57,15 @@ void OrderManager::order_callback(const osrf_gear::Order::ConstPtr & order_msg) 
     ROS_INFO_STREAM("count of piston_rod_part: "<< _piston_rod_part_count);
     ROS_INFO_STREAM("count of gear_part:"<< _gear_part_count);
 
+     pddlEditor.setPartCount(_gear_part_count, _piston_rod_part_count);
+
+    std::string baseFile = "/pddl/ariac_problem.pddl";
+    std::string targetFile = "/pddl/temp.txt";
+
+    baseFile = ros::package::getPath("localisation") + baseFile;
+    targetFile = ros::package::getPath("localisation") + targetFile;
+
+    pddlEditor.editPDDL(baseFile, targetFile, 'q');
     _once_callback_done = true;
 
   }

@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_srvs
   tf
   trajectory_msgs
+  roslib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -112,7 +113,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES localisation
-  CATKIN_DEPENDS geometry_msgs message_generation osrf_gear roscpp rospy sensor_msgs std_msgs std_srvs tf trajectory_msgs
+  CATKIN_DEPENDS geometry_msgs message_generation osrf_gear roscpp rospy sensor_msgs std_msgs std_srvs tf trajectory_msgs roslib
 #  DEPENDS system_lib
 )
 
@@ -128,9 +129,9 @@ include_directories(
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/localisation.cpp
-# )
+add_library(pddleditor
+   src/pddlEditor.cpp
+ )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -157,7 +158,7 @@ add_executable(office_manager_node_2 src/OrderManager2.cpp)
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
-target_link_libraries(office_manager_node ${catkin_LIBRARIES})
+target_link_libraries(office_manager_node pddleditor ${catkin_LIBRARIES})
 target_link_libraries(office_manager_node_2 ${catkin_LIBRARIES})
 add_dependencies(office_manager_node ${localisation_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 #############

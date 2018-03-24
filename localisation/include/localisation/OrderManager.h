@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <vector>
 #include <ros/ros.h>
+#include <ros/package.h>
 #include <iostream> 
 #include <stdio.h>
 #include <osrf_gear/LogicalCameraImage.h>
@@ -15,6 +16,7 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <tf/transform_listener.h>
 #include "localisation/request_logical_pose.h"
+#include "localisation/PddlEditor.h"
 
 class OrderManager {
 	private:
@@ -27,6 +29,8 @@ class OrderManager {
 		ros::ServiceServer service;
 		ros::ServiceServer incrementservice;
 		ros::Subscriber orders_subscriber;
+		PddlEditor pddlEditor;
+
 	public:
 		OrderManager(ros::NodeHandle n);
 		void  order_callback(const osrf_gear::Order::ConstPtr & order_msg);
