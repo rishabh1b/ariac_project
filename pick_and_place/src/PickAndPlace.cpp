@@ -111,7 +111,7 @@ bool PickAndPlace::pickNextPart(geometry_msgs::Vector3 obj_pose) {
   	target_pose1.position.z = obj_pose.z + _z_offset_from_part;
 	_manipulatorgroup.setPoseTarget(target_pose1);
 	_manipulatorgroup.move();
-    sleep(3.0);
+    sleep(1.0);
 
     // Catch the Object by activating the suction
     gripper_srv.request.enable = true;
@@ -132,7 +132,7 @@ bool PickAndPlace::pickNextPart(geometry_msgs::Vector3 obj_pose) {
   target_pose1.position.z = 0.723 + _z_offset_from_part * 5;
   _manipulatorgroup.setPoseTarget(target_pose1);
   _manipulatorgroup.move();
-   sleep(3.0);
+   sleep(1.0);
   return _isPartAttached;
 }
 
@@ -151,7 +151,7 @@ void PickAndPlace::pickNextPart() {
   	target_pose1.position.z = test_z + _z_offset_from_part;
 	_manipulatorgroup.setPoseTarget(target_pose1);
 	_manipulatorgroup.move();
-    sleep(3.0);
+    sleep(1.0);
 
     // Catch the Object by activating the suction
     gripper_srv.request.enable = true;
@@ -169,7 +169,7 @@ void PickAndPlace::pickNextPart() {
   target_pose1.position.z = 0.723 + _z_offset_from_part * 5;
   _manipulatorgroup.setPoseTarget(target_pose1);
   _manipulatorgroup.move();
-   sleep(3.0);
+   sleep(1.0);
 }
 
 bool PickAndPlace::place() {
@@ -184,7 +184,7 @@ bool PickAndPlace::place() {
 	_manipulatorgroup.setJointValueTarget(base_link_end_values);
 	 bool success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
-    sleep(5.0);
+    sleep(1.0);
     ros::spinOnce();
     sleep(1.0);
     if (!_isPartAttached)
@@ -202,7 +202,7 @@ bool PickAndPlace::place() {
   	target_pose1.position.z = _tray_location_z + _z_offset_from_part * 5;
 	_manipulatorgroup.setPoseTarget(target_pose1);
 	_manipulatorgroup.move();
-    sleep(2.0);
+    sleep(1.0);
 
     if (!_isPartAttached)
   	  return false; 
@@ -215,11 +215,11 @@ bool PickAndPlace::place() {
   	_manipulatorgroup.setJointValueTarget(base_link_end_values);
 	 success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
-    sleep(3.0);
+    sleep(1.0);
     _manipulatorgroup.setJointValueTarget(home_joint_values);
 	success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
-    sleep(5.0);
+    sleep(1.0);
     index++;
     return true;
 }
@@ -236,7 +236,7 @@ void PickAndPlace::goHome() {
   _manipulatorgroup.setJointValueTarget(home_joint_values);
   bool success = _manipulatorgroup.plan(my_plan);
   _manipulatorgroup.move();
-  sleep(3.0);
+  sleep(1.0);
 
 }
 
