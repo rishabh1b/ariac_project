@@ -44,6 +44,20 @@ $ cd ~/catkin_ws
 $ source devel/setup.bash
 $ roslaunch ariac_qual_1 competition.launch
 ```
+## Running a demo for editing PDDL file(high level planning)
+Terminal 1-
+```
+$ cd ~/catkin_ws
+$ source devel/setup.bash
+$ roslaunch ariac_qual_1 gear_bringup.launch
+```
+Terminal 2 - 
+```
+$ cd ~/catkin_ws
+$ source devel/setup.bash
+$ rosrun localisation office_manager_node
+```
+Running ```office_manager_node``` will modify the problem pddl file in the ```localisation/pddl``` directory.
 
 ## For Contributing
 _Make sure you work in your own branch_
