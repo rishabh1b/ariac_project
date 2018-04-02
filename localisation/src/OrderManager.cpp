@@ -48,15 +48,22 @@ void OrderManager::order_callback(const osrf_gear::Order::ConstPtr & order_msg) 
     ROS_INFO_STREAM("Number of parts: "<< num_parts);
     //list<string>::const_iterator it;
     for (int i=0;i< num_parts; i++){
-    std::string type_kits[num_parts];
-    type_kits[i]=kit1.objects[i].type;
-    ROS_INFO_STREAM(type_kits[i]);
-    if (type_kits[i]=="gear_part")_gear_part_count++;// countof prp
-    if (type_kits[i]=="piston_rod_part") _piston_rod_part_count++;//count of gear_part
+    std::string type_kit;
+    type_kit=kit1.objects[i].type;
+    ROS_INFO_STREAM(type_kit);
+    if (type_kit=="gear_part") {
+      _gear_part_count++;// countof prp
+    }
+    if (type_kit=="piston_rod_part") {
+      _piston_rod_part_count++;//count of gear_part
+    }
+
+    _targetPoses.push_back(kit1.objects[i].pose);
+
     }
     ROS_INFO_STREAM("count of piston_rod_part: "<< _piston_rod_part_count);
     ROS_INFO_STREAM("count of gear_part:"<< _gear_part_count);
-
+    ROS_INFO_STREAM("Target Poses:"<< _targetPoses[0].orientation);
     _once_callback_done = true;
 
   }

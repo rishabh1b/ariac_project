@@ -15,6 +15,7 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <tf/transform_listener.h>
 #include "localisation/request_logical_pose.h"
+#include <geometry_msgs/Pose.h>
 
 class OrderManager {
 	private:
@@ -27,6 +28,9 @@ class OrderManager {
 		ros::ServiceServer service;
 		ros::ServiceServer incrementservice;
 		ros::Subscriber orders_subscriber;
+
+		std::vector<geometry_msgs::Pose> _targetPoses;
+
 	public:
 		OrderManager(ros::NodeHandle n);
 		void  order_callback(const osrf_gear::Order::ConstPtr & order_msg);

@@ -82,10 +82,24 @@ void PickAndPlace::initialSetup() {
   _home_orientation.z = transform.getRotation().z();
   _home_orientation.w = transform.getRotation().w();
 
-  /*ROS_INFO_STREAM("Home Orientation X: " << _home_orientation.x);
-  ROS_INFO_STREAM("Home Orientation Y: " << _home_orientation.y);
-  ROS_INFO_STREAM("Home Orientation Z: " << _home_orientation.z);
-  ROS_INFO_STREAM("Home Orientation W: " << _home_orientation.w);*/
+  tf::Quaternion quat(_home_orientation.x, _home_orientation.y, _home_orientation.z, _home_orientation.w);
+  double roll, pitch, yaw;
+  tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+  ROS_INFO_STREAM("Roll : " << roll);
+  ROS_INFO_STREAM("Pitch : " << pitch);
+  ROS_INFO_STREAM("yaw : " << yaw);
+
+  // Try a different Home Orientation
+  tf::Quaternion q = tf::createQuaternionFromRPY(roll, 1.57, yaw);
+  _home_orientation.x = q.x();
+  _home_orientation.y = q.y();
+  _home_orientation.z = q.z();
+  _home_orientation.w = q.w();
+
+  // ROS_INFO_STREAM("Home Orientation X: " << _home_orientation.x);
+  // ROS_INFO_STREAM("Home Orientation Y: " << _home_orientation.y);
+  // ROS_INFO_STREAM("Home Orientation Z: " << _home_orientation.z);
+  // ROS_INFO_STREAM("Home Orientation W: " << _home_orientation.w);
 
   // Setup the End of BaseLink Values - joint values before dropping off the part at the end of the base link
   base_link_end_values = home_joint_values;
