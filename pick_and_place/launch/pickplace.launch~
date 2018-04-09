@@ -14,8 +14,8 @@
 <param name = "joint5" value = "4.7" />   <!-- 1.57 -->
 <param name = "joint6" value = "0" />
 
-<!--param name = "z_offset" value = "0.02" />
-<param name = "x_test" value = "-0.233" />
+<param name = "z_offset" value = "0.04" />
+<!--param name = "x_test" value = "-0.233" />
 <param name = "y_test" value = "-0.6" />
 <param name = "z_test" value = "0.723"-->
 
@@ -31,7 +31,7 @@
 <param name = "y_test" value = "-0.735" />
 <param name = "z_test" value = "0.724"/>
 
-<param name="tray_length" value="1.0" />
+<param name="tray_length" value="0.2" />
 </node>
 
 </launch>

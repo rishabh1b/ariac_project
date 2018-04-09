@@ -41,7 +41,9 @@ int main(int argc, char* argv[]) {
     // This sping can be removed
 	ros::spinOnce();
 
-	geometry_msgs::Vector3 obj_pose;
+	geometry_msgs::Vector3 obj_pose, target_pose;
+	geometry_msgs::Quaternion obj_orientation;
+	geometry_msgs::Quaternion target_orientation;
 
     ROS_WARN("Starting Pick and Place");
 	while (ros::ok()) {
@@ -51,9 +53,14 @@ int main(int argc, char* argv[]) {
 	   		break;
 
 	    obj_pose = pointsrv.response.position;
-        if (!pickPlace.pickNextPart(obj_pose))
+	    target_pose = pointsrv.response.tgtposition;
+	    obj_orientation = pointsrv.response.orientation;
+	    target_orientation = pointsrv.response.tgtorientation;
+
+
+        if (!pickPlace.pickNextPart(obj_pose, obj_orientation))
 	    	continue;
-	    if (!pickPlace.place())
+	    if (!pickPlace.place(target_pose, target_orientation))
 	    	continue;
 	   }
 	   else

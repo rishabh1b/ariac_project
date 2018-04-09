@@ -12,6 +12,7 @@
 #include <std_srvs/Empty.h>
 #include <string>
 #include <list>
+#include <stack>
 #include <geometry_msgs/TransformStamped.h>
 #include <tf/transform_listener.h>
 #include "localisation/request_logical_pose.h"
@@ -28,8 +29,10 @@ class OrderManager {
 		ros::ServiceServer service;
 		ros::ServiceServer incrementservice;
 		ros::Subscriber orders_subscriber;
+		tf::TransformListener tf_tray_to_world;
+		tf::StampedTransform _tray_to_world_;
 
-		std::vector<geometry_msgs::Pose> _targetPoses;
+		std::stack<geometry_msgs::Pose> _targetPosesPiston, _targetPosesGear;
 
 	public:
 		OrderManager(ros::NodeHandle n);

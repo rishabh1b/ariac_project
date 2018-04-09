@@ -14,8 +14,8 @@
 <param name = "joint5" value = "4.7" />   <!-- 1.57 -->
 <param name = "joint6" value = "0" />
 
-<!--param name = "z_offset" value = "0.02" />
-<param name = "x_test" value = "-0.233" />
+<param name = "z_offset" value = "0.02" />
+<!--param name = "x_test" value = "-0.233" />
 <param name = "y_test" value = "-0.6" />
 <param name = "z_test" value = "0.723"-->
 

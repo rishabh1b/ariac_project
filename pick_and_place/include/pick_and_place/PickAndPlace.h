@@ -14,6 +14,7 @@ private:
 	ros::NodeHandle nh_;
 	geometry_msgs::Pose _homePose;
 	geometry_msgs::Quaternion _home_orientation;
+	geometry_msgs::Vector3 _home_position;
 	osrf_gear::VacuumGripperControl gripper_srv;
 	ros::ServiceClient gripper_client;
 	ros::Subscriber gripperStateSubscriber;
@@ -37,6 +38,7 @@ private:
 
 	void initialSetup();
 	void goHome();
+	void goHome2();
 	float getRandomValue();
 
 public:
@@ -44,6 +46,8 @@ public:
 	void performPickAndPlace();
 	void pickNextPart();
 	bool place();
+	bool place(geometry_msgs::Vector3 vec, geometry_msgs::Quaternion quat);
 	bool pickNextPart(geometry_msgs::Vector3 obj_pose);
+	bool pickNextPart(geometry_msgs::Vector3 obj_pose, geometry_msgs::Quaternion orientation);
     void gripperStateCallback(const osrf_gear::VacuumGripperState::ConstPtr& msg);
 };

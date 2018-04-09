@@ -39,6 +39,7 @@ int main(int argc, char* argv[]) {
 	   		break;
 
 	    geometry_msgs::Vector3 obj_pose = pointsrv.response.position;
+	    geometry_msgs::Quaternion obj_orient = pointsrv.response.orientation;
 
 	   }
 	   else
