@@ -32,25 +32,73 @@ OrderManager::OrderManager(ros::NodeHandle n) {
 	_actual_piston_part_count = 0;
 	_actual_gear_part_count = 0;
 
+
   try {
-      this->tf_tray_to_world.waitForTransform("/world", "/agv2_load_point_frame", ros::Time(0), ros::Duration(20.0) );
+      this->tf_tray_to_world.waitForTransform("/world", "logical_camera_over_agv2_kit_tray_2_frame", ros::Time(0), ros::Duration(100.0) );
   } catch (tf::TransformException &ex) {
       ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
       ros::Duration(10.0).sleep();
   }
 
   try {
-    this->tf_tray_to_world.lookupTransform("/world", "/agv2_load_point_frame", ros::Time(0), (this->_tray_to_world_));
+    this->tf_tray_to_world.lookupTransform("/world", "logical_camera_over_agv2_kit_tray_2_frame", ros::Time(0), (this->_tray_to_world_));
   }
 
   catch (tf::TransformException &ex) {
     ROS_ERROR("[pick_and_place]: (lookup) %s", ex.what());
   }
 
+  try {
+      this->tf_tray_to_world.waitForTransform("/world", "logical_camera_over_agv1_kit_tray_1_frame", ros::Time(0), ros::Duration(100.0) );
+  } catch (tf::TransformException &ex) {
+      ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
+      ros::Duration(1.0).sleep();
+  }
+
+  try {
+    this->tf_tray_to_world.lookupTransform("/world", "/logical_camera_over_agv1_kit_tray_1_frame", ros::Time(0), (this->_tray_to_world_2));
+  }
+
+  catch (tf::TransformException &ex) {
+    ROS_ERROR("[pick_and_place]: (lookup) %s", ex.what());
+  }
+
+  // Get the location of the Logical Cameras
+  try {
+      this->tf_cam_bin7_to_world.waitForTransform("/world", "/logical_camera_bin7_frame", ros::Time(0), ros::Duration(30.0) );
+  } catch (tf::TransformException &ex) {
+      ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
+      ros::Duration(10.0).sleep();
+  }
+
+  try {
+    this->tf_cam_bin7_to_world.lookupTransform("/world", "/logical_camera_bin7_frame", ros::Time(0), (this->_cam_bin7_to_world_));
+  }
+
+  catch (tf::TransformException &ex) {
+    ROS_ERROR("[pick_and_place]: (lookup) %s", ex.what());
+  }
+
+  try {
+      this->tf_cam_bin6_to_world.waitForTransform("/world", "/logical_camera_bin6_frame", ros::Time(0), ros::Duration(30.0) );
+  } catch (tf::TransformException &ex) {
+      ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
+      ros::Duration(10.0).sleep();
+  }
+
+  try {
+    this->tf_cam_bin6_to_world.lookupTransform("/world", "/logical_camera_bin6_frame", ros::Time(0), (this->_cam_bin6_to_world_));
+  }
+
+  catch (tf::TransformException &ex) {
+    ROS_ERROR("[pick_and_place]: (lookup) %s", ex.what());
+  }
 
 	this->nh_ = n;
 	service = nh_.advertiseService("logical_camera_server", &OrderManager::get_pose, this);
 	orders_subscriber = nh_.subscribe("/ariac/orders", 10, &OrderManager::order_callback, this);
+  bin7_subscriber = nh_.subscribe("/ariac/logical_camera_bin7", 10, &OrderManager::source_pose_callback_bin7, this);
+  bin6_subscriber = nh_.subscribe("/ariac/logical_camera_bin6", 10, &OrderManager::source_pose_callback_bin6, this);
   incrementservice = nh_.advertiseService("incrementPart", &OrderManager::incrementCompletedPart, this);
 }
 
@@ -59,49 +107,87 @@ void OrderManager::order_callback(const osrf_gear::Order::ConstPtr & order_msg) 
     if (_once_callback_done)
     	return;
 
-    osrf_gear::Kit kit1= order_msg->kits[0];
-    int num_parts = kit1.objects.size();//Number of parts to move
-    ROS_INFO_STREAM("Number of parts: "<< num_parts);
-    //list<string>::const_iterator it;
-    for (int i=0;i< num_parts; i++){
-    std::string type_kit;
-    type_kit=kit1.objects[i].type;
-    ROS_INFO_STREAM(type_kit);
-    if (type_kit=="gear_part") {
-      _gear_part_count++;// countof prp
-      _targetPosesGear.push(kit1.objects[i].pose);
-    }
-    if (type_kit=="piston_rod_part") {
-      _piston_rod_part_count++;//count of gear_part
-      _targetPosesPiston.push(kit1.objects[i].pose);
-    }
+    std::stack<geometry_msgs::Pose> targetPosesGear, targetPosesPiston, targetPoses;
+    for (int j = 0; j < order_msg->kits.size(); j++) {
+      osrf_gear::Kit kit1= order_msg->kits[j];
+      int num_parts = kit1.objects.size();//Number of parts to move
+      //list<string>::const_iterator it;
+      for (int i=0;i< num_parts; i++){
+      std::string type_kit;
+      type_kit=kit1.objects[i].type;
+      ROS_INFO_STREAM(type_kit);
+      if (type_kit=="gear_part") {
+        _gear_part_count++;// countof prp
+        targetPosesGear.push(kit1.objects[i].pose);
+        targetPoses.push(kit1.objects[i].pose);
+      }
+      if (type_kit=="piston_rod_part") {
+        _piston_rod_part_count++;//count of gear_part
+        targetPosesPiston.push(kit1.objects[i].pose);
+        targetPoses.push(kit1.objects[i].pose);
+      }
 
     }
-    ROS_INFO_STREAM("count of piston_rod_part: "<< _piston_rod_part_count);
-    ROS_INFO_STREAM("count of gear_part:"<< _gear_part_count);
+    _kits.insert(std::make_pair(j, targetPoses));
+    std::vector<int> temp;
+    temp.push_back(_piston_rod_part_count);
+    temp.push_back(_gear_part_count);
+    _kits_comp.insert(make_pair(j,temp));
+     while (!targetPoses.empty())
+        targetPoses.pop();
+      
+    _piston_rod_part_count = 0;
+    _gear_part_count = 0;
+  }
+    ROS_INFO_STREAM("Size of kit: "<< _kits.size());
+    // ROS_INFO_STREAM("count of gear_part:"<< _gear_part_count);
     // ROS_INFO_STREAM("Target Poses:"<< _targetPoses[0].orientation);
     _once_callback_done = true;
+    _curr_kit = 0;;
+    _piston_rod_part_count = 0;
+    _gear_part_count = 0;
+
+  }
+
+  void OrderManager::source_pose_callback_bin7(const osrf_gear::LogicalCameraImage::ConstPtr & _msg) {
+      if(_msg->models.size() > 0)
+        _next_pose_piston = _msg->models[0].pose;
+
+  }
+
+  void OrderManager::source_pose_callback_bin6(const osrf_gear::LogicalCameraImage::ConstPtr & _msg) {
+      if(_msg->models.size() > 0)
+        _next_pose_gear = _msg->models[0].pose;
 
   }
 
 bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, localisation::request_logical_pose::Response &res) {
 	std::string srcFrame;
-	if (_piston_rod_part_count == 0)
-		return false;
+	// if (_piston_rod_part_count == 0)
+	// 	return false;
 
 	if(req.request_msg == true) {
 		ROS_INFO("sending back response");
-		ROS_INFO_STREAM("Piston Completed: " << _actual_piston_part_count);
-		// geometry_msgs::TransformStamped obj_pose;
 
 		if (_actual_piston_part_count == _piston_rod_part_count && _actual_gear_part_count == _gear_part_count) {
+      if (_curr_kit < _kits.size()) {
+        _actual_piston_part_count = 0;
+        _actual_gear_part_count = 0;
+        _piston_rod_part_count = _kits_comp[_curr_kit][0];
+        _gear_part_count = _kits_comp[_curr_kit][1];
+        targetPoses = _kits[_curr_kit];
+        _curr_kit += 1;
+      } else {
 			res.order_completed = true;
 			return true;
+    }
 		}
 
     tf::Transform targetToWorld; 
+    tf::Transform sourceToWorld;
 		if (_actual_piston_part_count < _piston_rod_part_count) {
-      geometry_msgs::Pose pose = _targetPosesPiston.top();
+      // geometry_msgs::Pose pose = _targetPosesPiston.top();
+      geometry_msgs::Pose pose = targetPoses.top();
       geometry_msgs::Quaternion q = pose.orientation;
       geometry_msgs::Point p = pose.position;
 
@@ -110,18 +196,33 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
 
       tf::Transform partToTray(quatTarget, vect);
 
-      targetToWorld = _tray_to_world_ * partToTray;
+      if ((_curr_kit - 1) % 2 == 1)
+        targetToWorld = _tray_to_world_2 * partToTray;
+      else
+        targetToWorld = _tray_to_world_* partToTray;
 
-			std::string part_count_string;
-			std::stringstream ss;
-			ss <<_curr_piston_part_count;
-			ss >> part_count_string;
-        	srcFrame = std::string("/logical_camera_bin7_piston_rod_part_") + part_count_string + "_frame";
-        	_curr_piston_part_count++;
-        	ROS_INFO_STREAM(srcFrame);
+      // Get the Source Pose
+      geometry_msgs::Quaternion q_s = _next_pose_piston.orientation;
+      geometry_msgs::Point p_s = _next_pose_piston.position;
+
+      tf::Quaternion quatSource(q_s.x, q_s.y, q_s.z, q_s.w);
+      tf::Vector3 vect_s(p_s.x, p_s.y, p_s.z);
+
+      tf::Transform partToCam(quatSource, vect_s);
+
+      sourceToWorld = _cam_bin7_to_world_ * partToCam;
+
+			// std::string part_count_string;
+			// std::stringstream ss;
+			// ss <<_curr_piston_part_count;
+			// ss >> part_count_string;
+   //      	srcFrame = std::string("/logical_camera_bin7_piston_rod_part_") + part_count_string + "_frame";
+   //      	_curr_piston_part_count++;
+   //      	ROS_INFO_STREAM(srcFrame);
 		}
     else if(_actual_gear_part_count < _gear_part_count) {
-      geometry_msgs::Pose pose = _targetPosesGear.top();
+      // geometry_msgs::Pose pose = _targetPosesGear.top();
+      geometry_msgs::Pose pose = targetPoses.top();
       geometry_msgs::Quaternion q = pose.orientation;
       geometry_msgs::Point p = pose.position;
 
@@ -130,38 +231,29 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
 
       tf::Transform partToTray(quatTarget, vect);
 
-      targetToWorld = _tray_to_world_ * partToTray;
-      std::string part_count_string;
-			std::stringstream ss;
-			ss <<_curr_gear_part_count;
-			ss >> part_count_string;
-        	srcFrame = std::string("/logical_camera_bin6_gear_part_") + part_count_string + "_frame";
-        	_curr_gear_part_count++;
-        }
+      if ((_curr_kit - 1) % 2 == 1)
+        targetToWorld = _tray_to_world_2 * partToTray;
+      else
+        targetToWorld = _tray_to_world_ * partToTray;
 
-        try {
-    	this->tf_logical_to_world.waitForTransform("/world", srcFrame, ros::Time(0), ros::Duration(10.0) );
- 		 } catch (tf::TransformException &ex) {
-    	ROS_ERROR("[localisation]: (wait) %s", ex.what());
-    	ros::Duration(10.0).sleep();
-  		}
+      // Get the Source Pose
+    geometry_msgs::Quaternion q_s = _next_pose_gear.orientation;
+    geometry_msgs::Point p_s = _next_pose_gear.position;
 
-  		try {
-    		this->tf_logical_to_world.lookupTransform("/world", srcFrame, ros::Time(0), (this->_logical_to_world_));
-  		}
+    tf::Quaternion quatSource(q_s.x, q_s.y, q_s.z, q_s.w);
+    tf::Vector3 vect_s(p_s.x, p_s.y, p_s.z);
 
-  		catch (tf::TransformException &ex) {
-    		ROS_ERROR("[localisation]: (lookup) %s", ex.what());
-  		}
+    tf::Transform partToCam(quatSource, vect_s);
 
-		// res.position = obj_pose.transform.translation;
+    sourceToWorld = _cam_bin6_to_world_ * partToCam;
+
 		geometry_msgs::Vector3 vec, vec2;
     geometry_msgs::Quaternion quat, quat2;
-    tf::Quaternion q = _logical_to_world_.getRotation();
+    tf::Quaternion q = sourceToWorld.getRotation();
     tf::Quaternion q2 = targetToWorld.getRotation();
-		vec.x = _logical_to_world_.getOrigin().x();
-		vec.y = _logical_to_world_.getOrigin().y();
-		vec.z = _logical_to_world_.getOrigin().z();
+		vec.x = sourceToWorld.getOrigin().x();
+		vec.y = sourceToWorld.getOrigin().y();
+		vec.z = sourceToWorld.getOrigin().z();
 
     vec2.x = targetToWorld.getOrigin().x();
     vec2.y = targetToWorld.getOrigin().y();
@@ -171,9 +263,12 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
     ROS_INFO_STREAM("part drop location x: "<< vec2.x);
     ROS_INFO_STREAM("part drop location y: "<< vec2.y);
     ROS_INFO_STREAM("part drop location z: "<< vec2.z);
-    ROS_INFO_STREAM("Tray location x: "<< _tray_to_world_.getOrigin().getX());
-    ROS_INFO_STREAM("Tray location y: "<< _tray_to_world_.getOrigin().getY());
-    ROS_INFO_STREAM("Tray location z: "<< _tray_to_world_.getOrigin().getZ());
+    ROS_INFO_STREAM("Tray x: "<< _tray_to_world_.getOrigin().x());
+    ROS_INFO_STREAM("Tray y: "<< _tray_to_world_.getOrigin().y());
+    ROS_INFO_STREAM("Tray z: "<< _tray_to_world_.getOrigin().z());
+    ROS_INFO_STREAM("Part pick location x: "<< vec.x);
+    ROS_INFO_STREAM("Part pick location y: "<< vec.y);
+    ROS_INFO_STREAM("Part pick location z: "<< vec.z);
 
     quat.x = q.x();
     quat.y = q.y();
@@ -199,15 +294,23 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
 	return true;
 }
 
-bool OrderManager::incrementCompletedPart(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
+bool OrderManager::incrementCompletedPart(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response) {
   ROS_WARN("Came in increment service");
   if (_actual_piston_part_count < _piston_rod_part_count) {
     _actual_piston_part_count++;
-    _targetPosesPiston.pop();
+    // _targetPosesPiston.pop();
+    targetPoses.pop();
+    response.success = false;
   }
   else if (_actual_gear_part_count < _gear_part_count){
     _actual_gear_part_count++;
-    _targetPosesGear.pop();
+    // _targetPosesGear.pop();
+    targetPoses.pop();
+    response.success = false;
+  } 
+  if (_actual_piston_part_count == _piston_rod_part_count && _actual_gear_part_count == _gear_part_count){
+     response.success = true;
+    _curr_kit += 1;
   }
   return true;
 }

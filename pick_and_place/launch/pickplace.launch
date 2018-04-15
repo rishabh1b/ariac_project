@@ -27,11 +27,15 @@
 <param name = "y_test" value = "0.03" />
 <param name = "z_test" value = "0.724"-->
 
-<param name = "x_test" value = "-0.5" />
+<!--param name = "x_test" value = "-0.5" />
 <param name = "y_test" value = "-0.735" />
-<param name = "z_test" value = "0.724"/>
+<param name = "z_test" value = "0.724"-->
 
 <param name="tray_length" value="0.2" />
+
+<param name = "x_test" value = "0.3" />
+<param name = "y_test" value = "1.2" />
+<param name = "z_test" value = "1.3"/>
 </node>
 
 </launch>

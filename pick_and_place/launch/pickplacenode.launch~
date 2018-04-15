@@ -8,7 +8,10 @@
 <param name = "joint4" value = "4" />  <!-- 3.67 -->
 <param name = "joint5" value = "4.7" />   <!-- 1.57 -->
 <param name = "joint6" value = "0" />
-<param name = "z_offset" value = "0.02" />
+<param name = "z_offset" value = "0.04" />
+<param name = "x_inter" value = "-0.1" />
+<param name = "y_inter" value = "-0.1" />
+<param name = "z_inter" value = "0.9"/>
 </node>
 
 </launch>

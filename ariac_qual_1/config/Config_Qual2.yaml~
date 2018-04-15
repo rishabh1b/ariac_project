@@ -31,7 +31,7 @@ sensors:
       xyz: [0.3, 3.15, 1.5]
       rpy: [0, 'pi/2', 0]
 
- logical_camera_over_agv2:
+ logical_camera_4:
     type: logical_camera
     pose:
       xyz: [0.3, -3.15, 1.5]
