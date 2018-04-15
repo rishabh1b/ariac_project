@@ -32,7 +32,6 @@ OrderManager::OrderManager(ros::NodeHandle n) {
 	_actual_piston_part_count = 0;
 	_actual_gear_part_count = 0;
 
-
   try {
       this->tf_tray_to_world.waitForTransform("/world", "logical_camera_over_agv2_kit_tray_2_frame", ros::Time(0), ros::Duration(100.0) );
   } catch (tf::TransformException &ex) {
@@ -109,41 +108,55 @@ void OrderManager::order_callback(const osrf_gear::Order::ConstPtr & order_msg) 
 
     std::stack<geometry_msgs::Pose> targetPosesGear, targetPosesPiston, targetPoses;
     for (int j = 0; j < order_msg->kits.size(); j++) {
-      osrf_gear::Kit kit1= order_msg->kits[j];
-      int num_parts = kit1.objects.size();//Number of parts to move
+      osrf_gear::Kit kit= order_msg->kits[j];
+      int num_parts = kit.objects.size();//Number of parts to move
       //list<string>::const_iterator it;
+      std::map<std::string, std::queue<geometry_msgs::Pose> > currKitPoses;
+      std::vector<std::string> typeParts;
+
       for (int i=0;i< num_parts; i++){
-      std::string type_kit;
-      type_kit=kit1.objects[i].type;
-      ROS_INFO_STREAM(type_kit);
-      if (type_kit=="gear_part") {
-        _gear_part_count++;// countof prp
-        targetPosesGear.push(kit1.objects[i].pose);
-        targetPoses.push(kit1.objects[i].pose);
-      }
-      if (type_kit=="piston_rod_part") {
-        _piston_rod_part_count++;//count of gear_part
-        targetPosesPiston.push(kit1.objects[i].pose);
-        targetPoses.push(kit1.objects[i].pose);
-      }
+        std::string type_part = kit.objects[i].type;
+        ROS_INFO_STREAM(type_part);
+        if (currKitPoses.find(type_part) == currKitPoses.end()) {
+           std::queue<geometry_msgs::Pose> tempPoses;
+           tempPoses.push(kit.objects[i].pose);
+           currKitPoses.insert(make_pair(type_part, tempPoses));
+           typeParts.push_back(type_part);
+        } else {
+          currKitPoses[type_part].push(kit.objects[i].pose);
+        }
+      // if (type_kit=="gear_part") {
+      //   _gear_part_count++;// countof prp
+      //   targetPosesGear.push(kit1.objects[i].pose);
+      //   targetPoses.push(kit1.objects[i].pose);
+      // }
+      // if (type_kit=="piston_rod_part") {
+      //   _piston_rod_part_count++;//count of gear_part
+      //   targetPosesPiston.push(kit1.objects[i].pose);
+      //   targetPoses.push(kit1.objects[i].pose);
+      // }
 
     }
-    _kits.insert(std::make_pair(j, targetPoses));
-    std::vector<int> temp;
-    temp.push_back(_piston_rod_part_count);
-    temp.push_back(_gear_part_count);
-    _kits_comp.insert(make_pair(j,temp));
-     while (!targetPoses.empty())
-        targetPoses.pop();
+
+     ROS_INFO_STREAM("The size of currKitPoses is : " << currKitPoses.size());
+     ROS_INFO_STREAM("The size of Piston Rod Part is : " << currKitPoses["piston_rod_part"].size());
+    _kits.insert(std::make_pair(j, currKitPoses));
+    _kits_comp.insert(make_pair(j,typeParts));
+    // std::vector<int> temp;
+    // temp.push_back(_piston_rod_part_count);
+    // temp.push_back(_gear_part_count);
+     // while (!targetPoses.empty())
+     //    targetPoses.pop();
       
-    _piston_rod_part_count = 0;
-    _gear_part_count = 0;
+    // _piston_rod_part_count = 0;
+    // _gear_part_count = 0;
   }
     ROS_INFO_STREAM("Size of kit: "<< _kits.size());
     // ROS_INFO_STREAM("count of gear_part:"<< _gear_part_count);
     // ROS_INFO_STREAM("Target Poses:"<< _targetPoses[0].orientation);
     _once_callback_done = true;
-    _curr_kit = 0;;
+    _curr_kit = 0;
+    _curr_kit_index = 0;
     _piston_rod_part_count = 0;
     _gear_part_count = 0;
 
@@ -161,7 +174,22 @@ void OrderManager::order_callback(const osrf_gear::Order::ConstPtr & order_msg) 
 
   }
 
+bool OrderManager::isKitCompleted() {
+    std::map<std::string, std::queue<geometry_msgs::Pose> > current_kit = _kits[_curr_kit];
+    std::map<std::string, std::queue<geometry_msgs::Pose> >::iterator it = current_kit.begin();
+    while (it != current_kit.end()) {
+      if (it->second.size() > 0)
+        return false;
+      ++it;
+    }
+
+  return true;
+}
+
 bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, localisation::request_logical_pose::Response &res) {
+  if (!_once_callback_done)
+      return false;
+
 	std::string srcFrame;
 	// if (_piston_rod_part_count == 0)
 	// 	return false;
@@ -169,25 +197,26 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
 	if(req.request_msg == true) {
 		ROS_INFO("sending back response");
 
-		if (_actual_piston_part_count == _piston_rod_part_count && _actual_gear_part_count == _gear_part_count) {
+		if (isKitCompleted()) {
       if (_curr_kit < _kits.size()) {
-        _actual_piston_part_count = 0;
-        _actual_gear_part_count = 0;
-        _piston_rod_part_count = _kits_comp[_curr_kit][0];
-        _gear_part_count = _kits_comp[_curr_kit][1];
-        targetPoses = _kits[_curr_kit];
+        // _actual_piston_part_count = 0;
+        // _actual_gear_part_count = 0;
+        // _piston_rod_part_count = _kits_comp[_curr_kit][0];
+        // _gear_part_count = _kits_comp[_curr_kit][1];
+        // targetPoses = _kits[_curr_kit];
         _curr_kit += 1;
+        _curr_kit_index = 0;
       } else {
-			res.order_completed = true;
+			 res.order_completed = true;
 			return true;
     }
 		}
 
     tf::Transform targetToWorld; 
     tf::Transform sourceToWorld;
-		if (_actual_piston_part_count < _piston_rod_part_count) {
+		if (_kits_comp[_curr_kit].at(_curr_kit_index).compare("piston_rod_part") == 0 && _kits[_curr_kit]["piston_rod_part"].size() > 0) {
       // geometry_msgs::Pose pose = _targetPosesPiston.top();
-      geometry_msgs::Pose pose = targetPoses.top();
+      geometry_msgs::Pose pose = _kits[_curr_kit]["piston_rod_part"].front();
       geometry_msgs::Quaternion q = pose.orientation;
       geometry_msgs::Point p = pose.position;
 
@@ -196,7 +225,7 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
 
       tf::Transform partToTray(quatTarget, vect);
 
-      if ((_curr_kit - 1) % 2 == 1)
+      if ((_curr_kit) % 2 == 1)
         targetToWorld = _tray_to_world_2 * partToTray;
       else
         targetToWorld = _tray_to_world_* partToTray;
@@ -220,9 +249,9 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
    //      	_curr_piston_part_count++;
    //      	ROS_INFO_STREAM(srcFrame);
 		}
-    else if(_actual_gear_part_count < _gear_part_count) {
+    else if(_kits_comp[_curr_kit].at(_curr_kit_index).compare("gear_part") == 0 && _kits[_curr_kit]["gear_part"].size() > 0) {
       // geometry_msgs::Pose pose = _targetPosesGear.top();
-      geometry_msgs::Pose pose = targetPoses.top();
+      geometry_msgs::Pose pose =  _kits[_curr_kit]["gear_part"].front();
       geometry_msgs::Quaternion q = pose.orientation;
       geometry_msgs::Point p = pose.position;
 
@@ -246,6 +275,7 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
     tf::Transform partToCam(quatSource, vect_s);
 
     sourceToWorld = _cam_bin6_to_world_ * partToCam;
+  }
 
 		geometry_msgs::Vector3 vec, vec2;
     geometry_msgs::Quaternion quat, quat2;
@@ -296,22 +326,32 @@ bool OrderManager::get_pose(localisation::request_logical_pose::Request  &req, l
 
 bool OrderManager::incrementCompletedPart(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response) {
   ROS_WARN("Came in increment service");
-  if (_actual_piston_part_count < _piston_rod_part_count) {
-    _actual_piston_part_count++;
-    // _targetPosesPiston.pop();
-    targetPoses.pop();
-    response.success = false;
-  }
-  else if (_actual_gear_part_count < _gear_part_count){
-    _actual_gear_part_count++;
-    // _targetPosesGear.pop();
-    targetPoses.pop();
-    response.success = false;
-  } 
-  if (_actual_piston_part_count == _piston_rod_part_count && _actual_gear_part_count == _gear_part_count){
-     response.success = true;
-    _curr_kit += 1;
-  }
+  _kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].pop();
+
+  if (isKitCompleted())
+      response.success = true;
+    else
+      response.success = false;
+
+  if (_kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].size() == 0)
+      _curr_kit_index += 1;
+
+  // if (_actual_piston_part_count < _piston_rod_part_count) {
+  //   _actual_piston_part_count++;
+  //   // _targetPosesPiston.pop();
+  //   targetPoses.pop();
+  //   response.success = false;
+  // }
+  // else if (_actual_gear_part_count < _gear_part_count){
+  //   _actual_gear_part_count++;
+  //   // _targetPosesGear.pop();
+  //   targetPoses.pop();
+  //   response.success = false;
+  // } 
+  // if (_actual_piston_part_count == _piston_rod_part_count && _actual_gear_part_count == _gear_part_count){
+  //    response.success = true;
+  //   _curr_kit += 1;
+  // }
   return true;
 }
 

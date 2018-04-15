@@ -13,6 +13,7 @@
 #include <string>
 #include <list>
 #include <stack>
+#include <queue>
 #include <map>
 #include <geometry_msgs/TransformStamped.h>
 #include <tf/transform_listener.h>
@@ -21,7 +22,7 @@
 
 class OrderManager {
 	private:
-		int _piston_rod_part_count, _gear_part_count, _curr_kit;
+		int _piston_rod_part_count, _gear_part_count, _curr_kit, _curr_kit_index;
 		int _curr_piston_part_count, _curr_gear_part_count, _actual_piston_part_count, _actual_gear_part_count;
 		bool _once_callback_done;
 		tf::TransformListener tf_logical_to_world;
@@ -43,8 +44,10 @@ class OrderManager {
 
 		geometry_msgs::Pose _next_pose_piston, _next_pose_gear;
 
-		std::map<int, std::stack<geometry_msgs::Pose> > _kits; 
-		std::map<int, std::vector<int> > _kits_comp;
+		std::map<int, std::map<std::string, std::queue<geometry_msgs::Pose> > > _kits; 
+		std::map<int, std::vector<std::string> > _kits_comp;
+		bool isKitCompleted();
+
 	public:
 		OrderManager(ros::NodeHandle n);
 		void  order_callback(const osrf_gear::Order::ConstPtr & order_msg);

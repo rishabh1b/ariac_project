@@ -94,7 +94,8 @@ int main(int argc, char* argv[]) {
 	}
 	osrf_gear::AGVControl subsrv;
     subsrv.request.kit_type = kit_type;
-    // submissionclient.call(subsrv);
+    if (incPart.response.success)
+    	submissionclient.call(subsrv);
 }
     return 0;
 }
