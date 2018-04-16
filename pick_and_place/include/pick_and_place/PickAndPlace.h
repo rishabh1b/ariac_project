@@ -30,9 +30,9 @@ private:
 
 	float _tray_location_x, _tray_location_y, _tray_location_z, _tray_length;
 
-	double test_x, test_y, test_z;
+	double test_x, test_y, test_z, conveyor_x, conveyor_y, conveyor_z;
 
-	std::vector<double> home_joint_values, base_link_end_values, base_link_end_values_2, return_home_joint_values;
+	std::vector<double> home_joint_values, base_link_end_values, base_link_end_values_2, return_home_joint_values, conveyor_joint_values;
 	int index;
 
 	bool _isPartAttached, _nowExecuting;
@@ -46,6 +46,8 @@ public:
 	PickAndPlace(ros::NodeHandle n, double* initialPositions, double _z_offset_from_part, double* part_location, float tray_length = 0.2);
 	void performPickAndPlace();
 	void pickNextPart();
+	bool pickPlaceNextPartConveyor(geometry_msgs::Vector3 target_pose, 
+                                            geometry_msgs::Quaternion target_orientation, bool useAGV2);
 	bool place();
 	bool place(geometry_msgs::Vector3 vec, geometry_msgs::Quaternion quat);
 	bool pickNextPart(geometry_msgs::Vector3 obj_pose);

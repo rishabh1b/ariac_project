@@ -56,6 +56,9 @@ int main(int argc, char* argv[]) {
 	while (ros::ok()) {
 		if (nextPointclient.call(pointsrv))
 	   {
+	   	if (pointsrv.response.noPartFound)
+	   		continue;
+	   	
 	   	if (pointsrv.response.order_completed)
 	   		break;
 
@@ -64,8 +67,14 @@ int main(int argc, char* argv[]) {
 	    obj_orientation = pointsrv.response.orientation;
 	    target_orientation = pointsrv.response.tgtorientation;
 
-	    if (!pickPlace.pickAndPlace(obj_pose, obj_orientation, target_pose, target_orientation, !usedAGV2))
+	    if (pointsrv.response.conveyorPart) {
+	    	if (!pickPlace.pickPlaceNextPartConveyor(target_pose, target_orientation, !usedAGV2))
+	    		continue;
+	    }
+
+	    else if (!pickPlace.pickAndPlace(obj_pose, obj_orientation, target_pose, target_orientation, !usedAGV2)) {
 	    	continue;
+	    }
 	    
      //    if (!pickPlace.pickNextPart(obj_pose, obj_orientation))
 	    // 	continue;
