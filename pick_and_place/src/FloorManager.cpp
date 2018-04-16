@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
 	    target_orientation = pointsrv.response.tgtorientation;
 
 	    if (pointsrv.response.conveyorPart) {
-	    	if (!pickPlace.pickPlaceNextPartConveyor(target_pose, target_orientation, !usedAGV2))
+	    	if (!pickPlace.pickPlaceNextPartConveyor(obj_pose, target_pose, target_orientation, !usedAGV2))
 	    		continue;
 	    }
 

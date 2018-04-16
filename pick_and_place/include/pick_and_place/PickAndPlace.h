@@ -46,7 +46,7 @@ public:
 	PickAndPlace(ros::NodeHandle n, double* initialPositions, double _z_offset_from_part, double* part_location, float tray_length = 0.2);
 	void performPickAndPlace();
 	void pickNextPart();
-	bool pickPlaceNextPartConveyor(geometry_msgs::Vector3 target_pose, 
+	bool pickPlaceNextPartConveyor(geometry_msgs::Vector3 obj_pose, geometry_msgs::Vector3 target_pose, 
                                             geometry_msgs::Quaternion target_orientation, bool useAGV2);
 	bool place();
 	bool place(geometry_msgs::Vector3 vec, geometry_msgs::Quaternion quat);

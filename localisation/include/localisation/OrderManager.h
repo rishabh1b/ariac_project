@@ -32,7 +32,7 @@ class OrderManager {
 		ros::ServiceServer incrementservice;
 		ros::Subscriber orders_subscriber;
 		ros::Subscriber bin7_subscriber;
-		ros::Subscriber bin6_subscriber;
+		ros::Subscriber bin6_subscriber, bin5_subscriber;
 		ros::Subscriber logical_cam_belt_sub;
 		tf::TransformListener tf_tray_to_world;
 		tf::TransformListener tf_cam_bin7_to_world;
@@ -47,10 +47,13 @@ class OrderManager {
 
 		std::map<int, std::map<std::string, std::queue<geometry_msgs::Pose> > > _kits; 
 		std::map<int, std::vector<std::string> > _kits_comp;
+		std::map<std::string, std::vector<double> > _conveyorPartsTime;
+
 		bool isKitCompleted();
 
 		std::string _obj_type_conveyor;
-		bool conveyorPartDetected;
+		bool conveyorPartDetected, beltVeloctiyDetermined, partAccounted, partAdded;
+		double belt_velocity, startTime, endTime, start_pose_y, avgManipSpeed, inPlaceRotConveyor;
 
 	public:
 		OrderManager(ros::NodeHandle n);

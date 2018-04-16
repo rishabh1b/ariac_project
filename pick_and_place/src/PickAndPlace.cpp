@@ -194,7 +194,7 @@ bool PickAndPlace::pickNextPart(geometry_msgs::Vector3 obj_pose, geometry_msgs::
   return _isPartAttached;
 }
 
-bool PickAndPlace::pickPlaceNextPartConveyor(geometry_msgs::Vector3 target_pose, 
+bool PickAndPlace::pickPlaceNextPartConveyor(geometry_msgs::Vector3 obj_pose, geometry_msgs::Vector3 target_pose, 
                                             geometry_msgs::Quaternion target_orientation, bool useAGV2) {
   ROS_INFO("Picking the Next Part");
   ros::AsyncSpinner spinner(1);
@@ -204,19 +204,19 @@ bool PickAndPlace::pickPlaceNextPartConveyor(geometry_msgs::Vector3 target_pose,
   _manipulatorgroup.setJointValueTarget(conveyor_joint_values);
   bool success = _manipulatorgroup.plan(my_plan);
   _manipulatorgroup.move();
-  sleep(3.0);
+  sleep(1.0);
 
   geometry_msgs::Pose target_pose1;
   target_pose1.orientation = _home_orientation;
   // target_pose1.orientation = orientation;
 
   // Starting Postion before activation suction. Hardcoded for now for a single piece
-    target_pose1.position.x = conveyor_x;
-    target_pose1.position.y = conveyor_y;
-    target_pose1.position.z = conveyor_z + 0.82 * _z_offset_from_part;
+    target_pose1.position.x = obj_pose.x;
+    target_pose1.position.y = obj_pose.y;
+    target_pose1.position.z = obj_pose.z + 0.82 * _z_offset_from_part;
   _manipulatorgroup.setPoseTarget(target_pose1);
   _manipulatorgroup.move();
-    sleep(5.0);
+    sleep(1.0);
 
     // Catch the Object by activating the suction
     // Introduce a little delay
@@ -227,7 +227,7 @@ bool PickAndPlace::pickPlaceNextPartConveyor(geometry_msgs::Vector3 target_pose,
    {
     ROS_INFO("Gripper Service Successfull");
    }
-    sleep(7);
+   // sleep(7);
  
   // Wait for a bit 
   ros::spinOnce();
@@ -337,7 +337,8 @@ bool PickAndPlace::pickNextPart(geometry_msgs::Vector3 obj_pose) {
 }
 
 void PickAndPlace::pickNextPart() {
-	ROS_INFO("Picking the First Part");
+  double t1 = ros::Time::now().toSec();
+	ROS_INFO("Picking the Next Part");
 	ros::AsyncSpinner spinner(1);
   	spinner.start();
   	sleep(2.0);
@@ -345,19 +346,23 @@ void PickAndPlace::pickNextPart() {
     _manipulatorgroup.setJointValueTarget(conveyor_joint_values);
     bool success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
-    sleep(3.0);
+    sleep(1.0);
 
+  double t2 = ros::Time::now().toSec();
+  ROS_INFO_STREAM("The in Place Rotation Time is: " << t2-t1);
 	geometry_msgs::Pose target_pose1;
 	target_pose1.orientation = _home_orientation;
 
 	// Starting Postion before activation suction. Hardcoded for now for a single piece
+    t1 = ros::Time::now().toSec();
   	target_pose1.position.x = test_x;
   	target_pose1.position.y = test_y;
   	target_pose1.position.z = test_z + _z_offset_from_part;
 	_manipulatorgroup.setPoseTarget(target_pose1);
 	_manipulatorgroup.move();
     sleep(1.0);
-
+    t2 = ros::Time::now().toSec();
+    ROS_INFO_STREAM("The moving to the end of beam time is: " << t2-t1);
     // Catch the Object by activating the suction
     gripper_srv.request.enable = true;
 

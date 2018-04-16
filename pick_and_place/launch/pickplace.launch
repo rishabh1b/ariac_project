@@ -34,7 +34,7 @@
 <param name="tray_length" value="0.2" />
 
 <param name = "x_test" value = "1.21" />
-<param name = "y_test" value = "0" />
+<param name = "y_test" value = "2" />
 <param name = "z_test" value = "0.93"/>
 </node>
 
