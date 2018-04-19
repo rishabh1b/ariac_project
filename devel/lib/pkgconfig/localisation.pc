@@ -1,0 +1,8 @@
+prefix=/home/dark_knight/809_ROS/ariac_qual_2/devel
+
+Name: localisation
+Description: Description of localisation
+Version: 0.0.0
+Cflags: -I/home/dark_knight/809_ROS/ariac_qual_2/devel/include
+Libs: -L/home/dark_knight/809_ROS/ariac_qual_2/devel/lib 
+Requires: geometry_msgs message_generation osrf_gear roscpp rospy sensor_msgs std_msgs std_srvs tf trajectory_msgs

@@ -1,0 +1,2 @@
+ariac_project/ariac_qual_1:ariac_project/localisation:ariac_project/pick_and_place
+-DCATKIN_DEVEL_PREFIX=/home/dark_knight/809_ROS/ariac_qual_2/devel -DCMAKE_INSTALL_PREFIX=/home/dark_knight/809_ROS/ariac_qual_2/install -G Unix Makefiles

@@ -1,0 +1,1 @@
+/usr/bin/c++  -fPIC   -shared -Wl,-soname,libgtest.so -o libgtest.so CMakeFiles/gtest.dir/src/gtest-all.cc.o  -L/home/dark_knight/809_ROS/ariac_qual_2/build/gtest/src -lpthread -Wl,-rpath,/home/dark_knight/809_ROS/ariac_qual_2/build/gtest/src 

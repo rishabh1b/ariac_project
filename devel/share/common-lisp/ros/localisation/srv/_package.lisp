@@ -1,0 +1,10 @@
+(cl:defpackage localisation-srv
+  (:use )
+  (:export
+   "REQUEST_LOGICAL_POSE"
+   "<REQUEST_LOGICAL_POSE-REQUEST>"
+   "REQUEST_LOGICAL_POSE-REQUEST"
+   "<REQUEST_LOGICAL_POSE-RESPONSE>"
+   "REQUEST_LOGICAL_POSE-RESPONSE"
+  ))
+
