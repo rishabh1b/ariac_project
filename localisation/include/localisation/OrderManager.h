@@ -19,6 +19,7 @@
 #include <tf/transform_listener.h>
 #include "localisation/request_logical_pose.h"
 #include <geometry_msgs/Pose.h>
+#include <cmath> 
 
 class OrderManager {
 	private:

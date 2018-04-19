@@ -537,7 +537,7 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
   // _manipulatorgroup.setJointValueTarget(home_joint_values);
   // bool success = _manipulatorgroup.plan(my_plan);
   // _manipulatorgroup.move();
-  // sleep(1.0); 
+  // sleep(1.0);
 
   _nowExecuting = true;
   goHome();

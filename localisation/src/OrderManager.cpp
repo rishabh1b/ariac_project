@@ -203,7 +203,11 @@
       _conveyorPartsTime[obj_type_conveyor].push_back(endTime);
       partAdded = true;
       if (!beltVeloctiyDetermined) {
-        belt_velocity = abs(start_pose_y - image_msg.models[0].pose.position.y) / (endTime - startTime);
+        // ROS_INFO_STREAM("The start pose is : " << start_pose_y);
+        // ROS_INFO_STREAM("The start pose is : " << image_msg.models[0].pose.position.y);
+        // ROS_INFO_STREAM("The start Time is : " << startTime);
+        // ROS_INFO_STREAM("The end Time is : " << endTime);
+        belt_velocity = std::abs(start_pose_y - image_msg.models[0].pose.position.y) / (endTime - startTime);
         ROS_INFO_STREAM(" The Belt Velocity is: " << belt_velocity);
         beltVeloctiyDetermined = true;
       }
@@ -221,6 +225,7 @@
 
     }
   }
+
   bool OrderManager::isKitCompleted() {
       std::map<std::string, std::queue<geometry_msgs::Pose> > current_kit = _kits[_curr_kit];
       std::map<std::string, std::queue<geometry_msgs::Pose> >::iterator it = current_kit.begin();
@@ -274,6 +279,7 @@
             else {
               feasibleConveyorPartFound = true;
               x = (4.5 - delta_x) / (1 + belt_velocity / avgManipSpeed);
+              ROS_INFO_STREAM(" Picking Location on Conveyor : " << x);
               break;
             }
           }

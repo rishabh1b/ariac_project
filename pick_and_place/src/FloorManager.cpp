@@ -53,6 +53,7 @@ int main(int argc, char* argv[]) {
     int kit_num = 0;
     bool usedAGV2 = false;
     ros::ServiceClient submissionclient;
+    bool conveyorPartAvailable;
 	while (ros::ok()) {
 		if (nextPointclient.call(pointsrv))
 	   {
