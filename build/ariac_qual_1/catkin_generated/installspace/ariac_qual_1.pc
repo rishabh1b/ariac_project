@@ -1,8 +1,0 @@
-prefix=/home/dark_knight/809_ROS/qual_2b/install
-
-Name: ariac_qual_1
-Description: Description of ariac_qual_1
-Version: 0.1.0
-Cflags: 
-Libs: -L/home/dark_knight/809_ROS/qual_2b/install/lib 
-Requires: localisation pick_and_place

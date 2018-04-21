@@ -1,1 +1,0 @@
-/usr/bin/c++  -fPIC   -shared -Wl,-soname,libpick_and_place.so -o /home/dark_knight/809_ROS/qual_2b/devel/lib/libpick_and_place.so CMakeFiles/pick_and_place.dir/src/PickAndPlace.cpp.o 
