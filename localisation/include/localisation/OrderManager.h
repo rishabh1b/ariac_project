@@ -23,7 +23,7 @@
 
 class OrderManager {
 	private:
-		int _piston_rod_part_count, _gear_part_count, _curr_kit, _curr_kit_index;
+		int _piston_rod_part_count, _gear_part_count, _curr_kit, _curr_kit_index, _old_kit_index, _old_kit;
 		int _curr_piston_part_count, _curr_gear_part_count, _actual_piston_part_count, _actual_gear_part_count;
 		size_t erase_index;
 		bool _once_callback_done;
@@ -32,6 +32,7 @@ class OrderManager {
 		ros::NodeHandle nh_;
 		ros::ServiceServer service;
 		ros::ServiceServer incrementservice;
+		ros::ServiceClient highPriorityClient;
 		ros::Subscriber orders_subscriber;
 		ros::Subscriber bin7_subscriber;
 		ros::Subscriber bin6_subscriber, bin5_subscriber;
@@ -47,8 +48,8 @@ class OrderManager {
 
 		geometry_msgs::Pose _next_pose_piston, _next_pose_gear, _next_pose_disk;
 
-		std::map<int, std::map<std::string, std::queue<geometry_msgs::Pose> > > _kits; 
-		std::map<int, std::vector<std::string> > _kits_comp;
+		std::map<int, std::map<std::string, std::queue<geometry_msgs::Pose> > > _kits, _old_kits; 
+		std::map<int, std::vector<std::string> > _kits_comp, _old_kits_comp;
 		std::map<std::string, std::vector<double> > _conveyorPartsTime;
 		std::vector<std::string> _conveyorPartTypes;
 

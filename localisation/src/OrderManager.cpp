@@ -117,6 +117,7 @@
 
   	this->nh_ = n;
   	service = nh_.advertiseService("logical_camera_server", &OrderManager::get_pose, this);
+    highPriorityClient = nh_.serviceClient<std_srvs::Empty>("high_priority_server");
   	orders_subscriber = nh_.subscribe("/ariac/orders", 10, &OrderManager::order_callback, this);
     bin7_subscriber = nh_.subscribe("/ariac/logical_camera_bin7", 10, &OrderManager::source_pose_callback_bin7, this);
     bin6_subscriber = nh_.subscribe("/ariac/logical_camera_bin6", 10, &OrderManager::source_pose_callback_bin6, this);
@@ -126,10 +127,19 @@
   }
 
   void OrderManager::order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
-      //string str1=order_msg->order_id.c_str();
       ROS_WARN("New Order Received!");
-      if (_once_callback_done)
-      	return;
+      if (_once_callback_done) {
+        _old_kits = _kits;
+        _old_kits_comp = _kits_comp;
+        _old_kit_index = _curr_kit_index;
+        _old_kit = _curr_kit;
+
+       _kits.clear();
+       _kits_comp.clear();
+
+       std_srvs::Empty highPriority;
+       highPriorityClient.call(highPriority);
+      }
 
       std::stack<geometry_msgs::Pose> targetPosesGear, targetPosesPiston, targetPoses;
       for (int j = 0; j < order_msg->kits.size(); j++) {
@@ -163,8 +173,8 @@
       _once_callback_done = true;
       _curr_kit = 0;
       _curr_kit_index = 0;
-      _piston_rod_part_count = 0;
-      _gear_part_count = 0;
+      // _piston_rod_part_count = 0;
+      // _gear_part_count = 0;
 
     }
 
@@ -518,10 +528,18 @@
       _kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].pop();
     }
 
-    if (isKitCompleted())
+    if (isKitCompleted()) {
         response.success = true;
-      else
+        if (_old_kits.size() > 0) {
+            _kits = _old_kits;
+            _kits_comp = _old_kits_comp;
+           _curr_kit_index = _old_kit_index;
+           _curr_kit = _old_kit;
+      }
+
+    } else {
         response.success = false;
+      }
 
     if (_kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].size() == 0)
         _curr_kit_index += 1;

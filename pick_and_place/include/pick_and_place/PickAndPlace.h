@@ -8,6 +8,7 @@
 #include <osrf_gear/VacuumGripperControl.h>
 #include <geometry_msgs/Vector3.h>
 #include <osrf_gear/VacuumGripperState.h>
+#include <std_srvs/Empty.h>
 
 class PickAndPlace {
 private:
@@ -31,13 +32,15 @@ private:
 
 	float _tray_location_x, _tray_location_y, _tray_location_z, _tray_length, _tray_1_x, _tray_1_y, _tray_1_z;
 
-	double test_x, test_y, test_z, conveyor_x, conveyor_y, conveyor_z;
+	double test_x, test_y, test_z, conveyor_x, conveyor_y, conveyor_z, last_known_y;
 
 	std::vector<double> home_joint_values, base_link_end_values, base_link_end_values_2, return_home_joint_values, conveyor_joint_values;
 	int index;
 
-	bool _isPartAttached, _nowExecuting, _conveyorPartPicked;
+	bool _isPartAttached, _nowExecuting, _conveyorPartPicked, _highPriorityOrderReceived;
 	
+	ros::ServiceServer highPriorityServer;
+
 	void initialSetup();
 	void goHome();
 	void goHome2();
@@ -57,4 +60,6 @@ public:
 	bool pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::Quaternion obj_orientation, geometry_msgs::Vector3 target_pose, 
                       geometry_msgs::Quaternion target_orientation, bool useAGV2 = true);
     void gripperStateCallback(const osrf_gear::VacuumGripperState::ConstPtr& msg);
+    bool highPriorityService(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response); 
+    void dropPartSafely(bool useAGV2);
 };

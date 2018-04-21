@@ -57,9 +57,65 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
    conveyor_joint_values = home_joint_values;
    conveyor_joint_values[1] = 0.1;
    _conveyorPartPicked = true;
+
+   highPriorityServer = nh_.advertiseService("high_priority_server", &PickAndPlace::highPriorityService, this);
+   _highPriorityOrderReceived = false;
    // Set Planning Time
    // _manipulatorgroup.setPlanningTime(10);
 
+   double conveyor_x = 1.21;
+   double conveyor_z = 1;
+
+   last_known_y = 0;
+
+}
+ bool PickAndPlace::highPriorityService(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
+    ROS_WARN("Came in High Priority service");
+    _manipulatorgroup.stop();
+    _highPriorityOrderReceived = true;
+}
+
+void PickAndPlace::dropPartSafely(bool useAGV2) {
+  if (!_isPartAttached)
+    return;
+
+  ros::AsyncSpinner spinner(1);
+  spinner.start();
+  sleep(2.0);
+
+  if (!useAGV2) {
+       conveyor_joint_values[0] = last_known_y;
+       conveyor_joint_values[1] = 0.01;
+     }
+     else {
+       conveyor_joint_values[0] = last_known_y;
+       conveyor_joint_values[1] = 6.27;
+     }
+
+  _manipulatorgroup.setJointValueTarget(conveyor_joint_values);
+  bool success = _manipulatorgroup.plan(my_plan);
+  _manipulatorgroup.move();
+  sleep(1);
+
+  geometry_msgs::Pose target_pose1;
+  target_pose1.orientation = _home_orientation;
+  // target_pose1.orientation = orientation;
+
+    target_pose1.position.x = conveyor_x;
+    target_pose1.position.y = last_known_y;
+    target_pose1.position.z = conveyor_x;
+  _manipulatorgroup.setPoseTarget(target_pose1);
+  _manipulatorgroup.move();
+    sleep(1);
+
+   gripper_srv.request.enable = false;
+
+  if (gripper_client.call(gripper_srv))
+   {
+    ROS_INFO("Gripper Service To Drop the Part on Conveyor");
+   }
+
+   _highPriorityOrderReceived = false;
 }
 // Method to bring UR10 in proper position and orientation
 void PickAndPlace::initialSetup() {
@@ -566,6 +622,8 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
   }
 
   ROS_INFO("Picking the Next Part");
+  if (_highPriorityOrderReceived)
+    return false;
 
   geometry_msgs::Pose target_pose1;
   target_pose1.orientation = _home_orientation;
@@ -578,6 +636,10 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
   _manipulatorgroup.move();
     sleep(2.0);
 
+  if (_highPriorityOrderReceived) {
+    return false;
+    last_known_y = obj_pose.y;
+  }
     // Catch the Object by activating the suction
     gripper_srv.request.enable = true;
 
@@ -596,7 +658,13 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
   _manipulatorgroup.move();
    sleep(1.0);
 
-  if(!_isPartAttached)
+
+ if (_highPriorityOrderReceived) {
+    last_known_y = obj_pose.y;
+    return false;
+ }
+
+ if(!_isPartAttached)
     return false;
 
   // goHome();
@@ -607,7 +675,9 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
   _manipulatorgroup.move();
   sleep(2.0);
 
-  std::vector<geometry_msgs::Pose> waypoints;
+  
+ if (_highPriorityOrderReceived)
+    return false;
 
  geometry_msgs::Pose target_pose2;
  if (!useAGV2) {
@@ -631,8 +701,9 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
   success = _manipulatorgroup.plan(my_plan);
   _manipulatorgroup.move();
     sleep(1.0);
-    
- if(!_isPartAttached)
+ 
+
+ if (_highPriorityOrderReceived)
     return false;
 
  //  std::vector<double> temp_joint_values = base_link_end_values_2;
@@ -659,6 +730,8 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
  _manipulatorgroup.setPoseTarget(target_pose2);
  _manipulatorgroup.move();
   sleep(1.0);
+
+
   if(!_isPartAttached)
     return false;
 
