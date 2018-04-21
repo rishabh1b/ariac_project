@@ -1,0 +1,8 @@
+prefix=/home/dark_knight/809_ROS/qual_2b/devel
+
+Name: pick_and_place
+Description: Description of pick_and_place
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/dark_knight/809_ROS/qual_2b/devel/lib 
+Requires: 

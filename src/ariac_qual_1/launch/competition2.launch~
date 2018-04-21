@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+
+<launch>
+
+<!-- Launching the Moveit configuration -->  
+<include file="$(find ur10_moveit_config)/launch/ur10_moveit_planning_execution.launch">
+<arg name = "sim" value="true"/>
+</include>
+
+<node pkg="localisation" name="order_manager" type="office_manager_node_2" output = "screen"/>
+
+<node pkg = "pick_and_place" name = "qual_1a" type="floor_manager_node_2" output = "screen">
+<param name = "joint1" value = "3.1" />
+<param name = "joint2" value = "-1.5" /> <!-- -1.1-->
+<param name = "joint3" value = "2.4" />  <!-- 1.9 -->	
+<param name = "joint4" value = "3.75" />  <!-- 3.9 -->
+<param name = "joint5" value = "4.7" />   <!-- 1.57 -->
+<param name = "joint6" value = "0" />
+<param name = "z_offset" value = "0.02" />
+
+<param name = "x_test" value = "-0.5" />
+<param name = "y_test" value = "-0.735" />
+<param name = "z_test" value = "0.724" />
+
+<param name="tray_length" value="0.19" />
+</node>
+
+</launch>

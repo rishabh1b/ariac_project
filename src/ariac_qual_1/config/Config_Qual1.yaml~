@@ -1,0 +1,27 @@
+
+# Competitor trial configuration options
+
+arm:
+  type: ur10
+
+sensors:
+  proximity_sensor:
+    type: proximity_sensor
+    pose:
+      xyz: [0.95, 2.6, 0.916]
+      rpy: [0, 0, 0]
+  logical_camera_bin6:
+    type: logical_camera
+    pose:
+      xyz: [-0.66, -0.52, 1.36]
+      rpy: ['pi/2', 1.32, 0]
+  logical_camera_bin7:
+    type: logical_camera
+    pose:
+      xyz: [-0.66, 0.22, 1.36]
+      rpy: ['pi/2', 1.32, 0]
+  logical_camera_over_agv1:
+    type: logical_camera
+    pose:
+      xyz: [0.3, 3.15, 1.5]
+      rpy: [0, 'pi/2', 0]
