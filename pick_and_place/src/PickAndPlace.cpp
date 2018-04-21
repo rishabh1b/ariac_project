@@ -23,15 +23,15 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
 
   _manipulatorgroup.getCurrentState()->copyJointGroupPositions(_manipulatorgroup.getCurrentState()->getRobotModel()->getJointModelGroup(_manipulatorgroup.getName()), home_joint_values);
 
+  for (size_t i = 1; i < 7; i++) {
+    home_joint_values[i] = initialjoints[i];
+  }
+
   // Set the client for Gripper control service
   gripper_client = nh_.serviceClient<osrf_gear::VacuumGripperControl>("/ariac/gripper/control");
 
   // Set the Gripper State Subsrciber
   gripperStateSubscriber = nh_.subscribe("/ariac/gripper/state", 10, &PickAndPlace::gripperStateCallback, this);
-
-  for (size_t i = 1; i < 7; i++) {
-  	home_joint_values[i] = initialjoints[i];
-  }
 
   // ROS_INFO_STREAM("Value of Each joint: " << home_joint_values[1] << " , " << home_joint_values[2] << " , " << home_joint_values[3] << " , " << home_joint_values[4] << " , " <<home_joint_values[5] << " , " << home_joint_values[6] );
   initialSetup();
@@ -43,6 +43,9 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
 
    // Assumed tray length
   _tray_length = tray_length;
+  _tray_1_x = 0.2018;
+  _tray_1_y = 3.335;
+  _tray_1_z = 0.78;
 
    srand (static_cast <unsigned> (time(0)));
 
@@ -52,15 +55,15 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
    index = 0;
 
    conveyor_joint_values = home_joint_values;
-   conveyor_joint_values[1] = 6.27;
+   conveyor_joint_values[1] = 0.1;
+   _conveyorPartPicked = true;
    // Set Planning Time
-   // _manipulatorgroup.setPlanningTime(1);
+   // _manipulatorgroup.setPlanningTime(10);
 
 }
 // Method to bring UR10 in proper position and orientation
 void PickAndPlace::initialSetup() {
-
-  goHome();
+  // goHome();
   tf::StampedTransform transform;
   tf::StampedTransform worldtransform;
   tf::TransformListener listener; 
@@ -99,16 +102,15 @@ void PickAndPlace::initialSetup() {
   // _home_orientation.z = transform.getRotation().z();
   // _home_orientation.w = transform.getRotation().w();
 
-  _home_orientation.x = _home_quat.x();
-  _home_orientation.y = _home_quat.y();
-  _home_orientation.z = _home_quat.z();
-  _home_orientation.w = _home_quat.w();
+  _tray_orientation.x = _home_quat.x();
+  _tray_orientation.y = _home_quat.y();
+  _tray_orientation.z = _home_quat.z();
+  _tray_orientation.w = _home_quat.w();
 
   _home_position.x = worldtransform.getOrigin().getX();
   _home_position.y = worldtransform.getOrigin().getY();
   _home_position.z = worldtransform.getOrigin().getZ();
 
-  geometry_msgs::Point _home_pt;
   _home_pt.x = _home_position.x;
   _home_pt.y = _home_position.y;
   _home_pt.z = _home_position.z;
@@ -131,15 +133,17 @@ void PickAndPlace::initialSetup() {
   _home_orientation.z = q.z();
   _home_orientation.w = q.w();
 
+  // setHome();
+
   // Setup the End of BaseLink Values - joint values before dropping off the part at the end of the base link
   base_link_end_values = home_joint_values;
-  base_link_end_values[0] = -2;
+  base_link_end_values[0] = -2.2;
   base_link_end_values[1] = 4.69;
   base_link_end_values[2] = base_link_end_values[2] + 0.7;
   base_link_end_values[3] = base_link_end_values[3] - 0.7;
 
   base_link_end_values_2 = home_joint_values;
-  base_link_end_values_2[0] = 2;
+  base_link_end_values_2[0] = 2.2;
   base_link_end_values_2[1] = 1.56;
   base_link_end_values_2[2] = base_link_end_values[2] - 0.7;
   base_link_end_values_2[3] = base_link_end_values[3] + 0.7;
@@ -201,43 +205,68 @@ bool PickAndPlace::pickPlaceNextPartConveyor(geometry_msgs::Vector3 obj_pose, ge
     spinner.start();
     sleep(2.0);
 
+  if (!useAGV2) {
+       conveyor_joint_values[0] = base_link_end_values_2[0];
+       conveyor_joint_values[1] = 0.01;
+     }
+     else {
+       conveyor_joint_values[0] = base_link_end_values[0];
+       conveyor_joint_values[1] = 6.27;
+     }
+
   _manipulatorgroup.setJointValueTarget(conveyor_joint_values);
   bool success = _manipulatorgroup.plan(my_plan);
   _manipulatorgroup.move();
-  sleep(1.0);
+  sleep(1);
 
-  geometry_msgs::Pose target_pose1;
-  target_pose1.orientation = _home_orientation;
-  // target_pose1.orientation = orientation;
 
-  // Starting Postion before activation suction. Hardcoded for now for a single piece
-    target_pose1.position.x = obj_pose.x;
-    target_pose1.position.y = obj_pose.y;
-    target_pose1.position.z = obj_pose.z + 0.82 * _z_offset_from_part;
-  _manipulatorgroup.setPoseTarget(target_pose1);
-  _manipulatorgroup.move();
-    sleep(1.0);
-
-    // Catch the Object by activating the suction
-    // Introduce a little delay
-    // Make it robust by calculating the exact time based on velocity
+  // Catch the Object by activating the suction
+  // Introduce a little delay
+  // Make it robust by calculating the exact time based on velocity
     gripper_srv.request.enable = true;
 
     if (gripper_client.call(gripper_srv))
    {
     ROS_INFO("Gripper Service Successfull");
    }
-   // sleep(7);
- 
+
+  geometry_msgs::Pose target_pose1;
+  target_pose1.orientation = _home_orientation;
+  // target_pose1.orientation = orientation;
+
+    target_pose1.position.x = obj_pose.x;
+    target_pose1.position.y = obj_pose.y;
+    target_pose1.position.z = obj_pose.z + 0.6 * _z_offset_from_part;
+  _manipulatorgroup.setPoseTarget(target_pose1);
+  _manipulatorgroup.move();
+    sleep(1);
+
+
   // Wait for a bit 
-  ros::spinOnce();
-  sleep(3.0);
+   sleep(2);
+   target_pose1.position.z = conveyor_z + _z_offset_from_part * 5;
+  _manipulatorgroup.setPoseTarget(target_pose1);
+  _manipulatorgroup.move();
+   sleep(0.5);
+
+  double t = ros::Time::now().toSec();
+  while (!_isPartAttached) {
+    if (ros::Time::now().toSec() - t > 3)
+        break;
+    ros::spinOnce();
+    // sleep(3.0);
 
   // Lift the arm a little up
   target_pose1.position.z = conveyor_z + _z_offset_from_part * 5;
   _manipulatorgroup.setPoseTarget(target_pose1);
   _manipulatorgroup.move();
-   sleep(1.0);
+   sleep(0.1);
+   ros::spinOnce();
+   target_pose1.position.z = obj_pose.z + 0.6 * _z_offset_from_part;
+  _manipulatorgroup.setPoseTarget(target_pose1);
+  _manipulatorgroup.move();
+    sleep(0.1);
+ }
 
   if (!_isPartAttached)
     return false;
@@ -249,15 +278,14 @@ bool PickAndPlace::pickPlaceNextPartConveyor(geometry_msgs::Vector3 obj_pose, ge
 
   success = _manipulatorgroup.plan(my_plan);
   _manipulatorgroup.move();
-    sleep(1.0);
+  sleep(2.0);
     
  if(!_isPartAttached)
     return false;
- // waypoints.push_back(target_pose2);
 
  target_pose1.position.x = target_pose.x;
  target_pose1.position.y = target_pose.y;
- target_pose1.position.z = target_pose.z + _z_offset_from_part * 5;
+ target_pose1.position.z = target_pose.z + _z_offset_from_part * 11;
  _manipulatorgroup.setPoseTarget(target_pose1);
  _manipulatorgroup.move();
   sleep(1.0);
@@ -266,7 +294,6 @@ bool PickAndPlace::pickPlaceNextPartConveyor(geometry_msgs::Vector3 obj_pose, ge
 
   sleep(1.0);
   ros::spinOnce();
-  sleep(1.0);
 
  if (!_isPartAttached)
     return false;
@@ -276,24 +303,25 @@ bool PickAndPlace::pickPlaceNextPartConveyor(geometry_msgs::Vector3 obj_pose, ge
     gripper_client.call(gripper_srv);
 
  // Return to the Home Position
-    if (!useAGV2) {
-    target_pose1.position.x = 0.3;
-    target_pose1.position.y = 1.2;
-    target_pose1.position.z = 1.3;
-   } else {
-    target_pose1.position.x = 0.3;
-    target_pose1.position.y = -1.2;
-    target_pose1.position.z = 1.3;
-   }
+   //  if (!useAGV2) {
+   //  target_pose1.position.x = 0.3;
+   //  target_pose1.position.y = 1.2;
+   //  target_pose1.position.z = 1.3;
+   // } else {
+   //  target_pose1.position.x = 0.3;
+   //  target_pose1.position.y = -1.2;
+   //  target_pose1.position.z = 1.3;
+
+   // }
    
-    _manipulatorgroup.setPoseTarget(target_pose1);
-   _manipulatorgroup.move();
-    sleep(1.0);
-    _manipulatorgroup.setJointValueTarget(home_joint_values);
-    success = _manipulatorgroup.plan(my_plan);
-    _manipulatorgroup.move();
-    sleep(1.0);
-    index++;
+   //  _manipulatorgroup.setPoseTarget(target_pose1);
+   // _manipulatorgroup.move();
+   //  sleep(1.0);
+   //  _manipulatorgroup.setJointValueTarget(home_joint_values);
+   //  success = _manipulatorgroup.plan(my_plan);
+   //  _manipulatorgroup.move();
+   //  sleep(1.0);
+    _conveyorPartPicked = true;
     return true;
 }
 
@@ -337,52 +365,66 @@ bool PickAndPlace::pickNextPart(geometry_msgs::Vector3 obj_pose) {
 }
 
 void PickAndPlace::pickNextPart() {
+  goHome();
   double t1 = ros::Time::now().toSec();
 	ROS_INFO("Picking the Next Part");
 	ros::AsyncSpinner spinner(1);
-  	spinner.start();
-  	sleep(2.0);
+  spinner.start();
+  sleep(2.0);
 
-    _manipulatorgroup.setJointValueTarget(conveyor_joint_values);
+    _manipulatorgroup.setJointValueTarget(base_link_end_values_2);
     bool success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
     sleep(1.0);
 
-  double t2 = ros::Time::now().toSec();
-  ROS_INFO_STREAM("The in Place Rotation Time is: " << t2-t1);
-	geometry_msgs::Pose target_pose1;
-	target_pose1.orientation = _home_orientation;
+ //  double t2 = ros::Time::now().toSec();
+ //  ROS_INFO_STREAM("The in Place Rotation Time is: " << t2-t1);
+	// geometry_msgs::Pose target_pose1;
+	// target_pose1.orientation = _home_orientation;
 
-	// Starting Postion before activation suction. Hardcoded for now for a single piece
-    t1 = ros::Time::now().toSec();
-  	target_pose1.position.x = test_x;
-  	target_pose1.position.y = test_y;
-  	target_pose1.position.z = test_z + _z_offset_from_part;
-	_manipulatorgroup.setPoseTarget(target_pose1);
-	_manipulatorgroup.move();
-    sleep(1.0);
-    t2 = ros::Time::now().toSec();
-    ROS_INFO_STREAM("The moving to the end of beam time is: " << t2-t1);
-    // Catch the Object by activating the suction
-    gripper_srv.request.enable = true;
+ //    t1 = ros::Time::now().toSec();
+ //  	target_pose1.position.x = test_x;
+ //  	target_pose1.position.y = test_y;
+ //  	target_pose1.position.z = test_z + _z_offset_from_part;
+	// _manipulatorgroup.setPoseTarget(target_pose1);
+	// _manipulatorgroup.move();
+ //    sleep(1.0);
+ //    t2 = ros::Time::now().toSec();
+ //    ROS_INFO_STREAM("The moving to the end of beam time is: " << t2-t1);
+ // //    // Catch the Object by activating the suction
+ // //    gripper_srv.request.enable = true;
 
-    if (gripper_client.call(gripper_srv))
-   {
-  	ROS_INFO("Gripper Service Successfull");
-   }
+ // //    if (gripper_client.call(gripper_srv))
+ // //   {
+ // //  	ROS_INFO("Gripper Service Successfull");
+ // //   }
 
-  // TODO: Confirm the state on the vaccum gripper before continuing
-  // Wait for a bit 
-  sleep(3.0);
+ //  sleep(3.0);
 
   // Lift the arm a little up
-  target_pose1.position.z = 0.723 + _z_offset_from_part * 5;
-  _manipulatorgroup.setPoseTarget(target_pose1);
-  _manipulatorgroup.move();
-   sleep(1.0);
+  // target_pose1.position.z = 0.723 + _z_offset_from_part * 5;
+  // _manipulatorgroup.setPoseTarget(target_pose1);
+  // _manipulatorgroup.move();
+  //  sleep(1.0);
 
-  goHome();
-  goHome2();
+ //  std::vector<double> temp_joint_values = base_link_end_values_2;
+ //  temp_joint_values[2] = temp_joint_values[2] + M_PI / 3;
+ //  temp_joint_values[3] = temp_joint_values[3] - M_PI / 2.5;
+ //  _manipulatorgroup.setJointValueTarget(temp_joint_values);
+ // _manipulatorgroup.move();
+ //  sleep(1.0);
+
+  // _manipulatorgroup.setPlanningTime(10);
+  geometry_msgs::Pose target_pose2;
+  target_pose2.orientation = _home_orientation;
+  target_pose2.position.x = _tray_1_x;
+ target_pose2.position.y = _tray_1_y;
+ target_pose2.position.z = _tray_1_z;
+ _manipulatorgroup.setPoseTarget(target_pose2);
+ _manipulatorgroup.move();
+  sleep(1.0);
+  // goHome();
+  // goHome2();
 }
 
 bool PickAndPlace::place() {
@@ -497,10 +539,33 @@ bool PickAndPlace::place(geometry_msgs::Vector3 vec, geometry_msgs::Quaternion q
 bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::Quaternion obj_orientation, geometry_msgs::Vector3 target_pose, 
                                 geometry_msgs::Quaternion target_orientation, bool useAGV2) {
 
-  ROS_INFO("Picking the Next Part");
   ros::AsyncSpinner spinner(1);
   spinner.start();
-  sleep(2.0);
+  sleep(1.0);
+   // Return to the Home Position
+  if (!_conveyorPartPicked) {
+    geometry_msgs::Pose target_pose1;
+    target_pose1.orientation = _home_orientation;
+    if (!useAGV2) {
+    target_pose1.position.x = 0.3;
+    target_pose1.position.y = 1.2;
+    target_pose1.position.z = 1.3;
+   } else {
+    target_pose1.position.x = 0.3;
+    target_pose1.position.y = -1.2;
+    target_pose1.position.z = 1.3;
+   }
+   
+    _manipulatorgroup.setPoseTarget(target_pose1);
+   _manipulatorgroup.move();
+    sleep(1.0);
+    _manipulatorgroup.setJointValueTarget(home_joint_values);
+    bool success = _manipulatorgroup.plan(my_plan);
+    _manipulatorgroup.move();
+    sleep(1.0);
+  }
+
+  ROS_INFO("Picking the Next Part");
 
   geometry_msgs::Pose target_pose1;
   target_pose1.orientation = _home_orientation;
@@ -534,13 +599,14 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
   if(!_isPartAttached)
     return false;
 
-  // _manipulatorgroup.setJointValueTarget(home_joint_values);
-  // bool success = _manipulatorgroup.plan(my_plan);
-  // _manipulatorgroup.move();
-  // sleep(1.0);
+  // goHome();
+  std::vector<double> joint_vals = home_joint_values;
+  joint_vals[0] = obj_pose.y;
+  _manipulatorgroup.setJointValueTarget(joint_vals);
+  bool success = _manipulatorgroup.plan(my_plan);
+  _manipulatorgroup.move();
+  sleep(2.0);
 
-  _nowExecuting = true;
-  goHome();
   std::vector<geometry_msgs::Pose> waypoints;
 
  geometry_msgs::Pose target_pose2;
@@ -554,10 +620,6 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
    target_pose2.position.z = 1.3; // 1.3
  }
 
- target_pose2.orientation = _home_orientation;
- _manipulatorgroup.setPoseTarget(target_pose2);
- _manipulatorgroup.move();
-  sleep(1.0);
   if(!_isPartAttached)
     return false;
 
@@ -566,24 +628,39 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
   else
     _manipulatorgroup.setJointValueTarget(base_link_end_values);
 
-  bool success = _manipulatorgroup.plan(my_plan);
+  success = _manipulatorgroup.plan(my_plan);
   _manipulatorgroup.move();
     sleep(1.0);
     
  if(!_isPartAttached)
     return false;
- // waypoints.push_back(target_pose2);
 
+ //  std::vector<double> temp_joint_values = base_link_end_values_2;
+ //  temp_joint_values[2] = temp_joint_values[2] + M_PI / 3;
+ //  temp_joint_values[3] = temp_joint_values[3] - M_PI / 2.5;
+ //  _manipulatorgroup.setJointValueTarget(temp_joint_values);
+ // _manipulatorgroup.move();
+ //  sleep(1.0);
+  if(!_isPartAttached)
+    return false;
+
+ // Hack
+ if (target_pose.y > 3.335)
+    target_pose.y = 3.3;
+
+ if (target_pose.y < -3.335)
+    target_pose.y = -3.3;
+
+ // _manipulatorgroup.setPlanningTime(10);
+ target_pose2.orientation = _home_orientation;
  target_pose2.position.x = target_pose.x;
  target_pose2.position.y = target_pose.y;
- target_pose2.position.z = target_pose.z + _z_offset_from_part * 5;
+ target_pose2.position.z = target_pose.z + _z_offset_from_part;
  _manipulatorgroup.setPoseTarget(target_pose2);
  _manipulatorgroup.move();
   sleep(1.0);
   if(!_isPartAttached)
     return false;
-
-_nowExecuting = false;
 
  sleep(1.0);
  ros::spinOnce();
@@ -596,26 +673,18 @@ _nowExecuting = false;
     gripper_srv.request.enable = false;
     gripper_client.call(gripper_srv);
 
- // Return to the Home Position
-    if (!useAGV2) {
-    target_pose1.position.x = 0.3;
-    target_pose1.position.y = 1.2;
-    target_pose1.position.z = 1.3;
-   } else {
-    target_pose1.position.x = 0.3;
-    target_pose1.position.y = -1.2;
-    target_pose1.position.z = 1.3;
-   }
-   
-    _manipulatorgroup.setPoseTarget(target_pose1);
-   _manipulatorgroup.move();
-    sleep(1.0);
-    _manipulatorgroup.setJointValueTarget(home_joint_values);
-    success = _manipulatorgroup.plan(my_plan);
-    _manipulatorgroup.move();
-    sleep(1.0);
-    index++;
-    return true;
+ // Return to Base Position
+  if (!useAGV2)
+    _manipulatorgroup.setJointValueTarget(base_link_end_values_2);
+  else
+    _manipulatorgroup.setJointValueTarget(base_link_end_values);
+
+  success = _manipulatorgroup.plan(my_plan);
+  _manipulatorgroup.move();
+    sleep(2.0);
+
+  _conveyorPartPicked = false;
+  return true;
 
 }
 
@@ -623,6 +692,21 @@ void PickAndPlace::gripperStateCallback(const osrf_gear::VacuumGripperState::Con
 	_isPartAttached = msg->attached;
   // if (!_isPartAttached && _nowExecuting)
   //   _manipulatorgroup.stop();
+}
+
+void PickAndPlace::setHome() {
+  ROS_INFO("Setting Home Position");
+  ros::AsyncSpinner spinner(1);
+  spinner.start();
+  sleep(2.0);
+  geometry_msgs::Pose target_pose1;
+  target_pose1.orientation = _home_orientation;
+
+  // Starting Postion before activation suction. Hardcoded for now for a single piece
+  target_pose1.position = _home_pt;
+ _manipulatorgroup.setPoseTarget(target_pose1);
+ _manipulatorgroup.move();
+  sleep(2.0);
 }
 
 void PickAndPlace::goHome() {

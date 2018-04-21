@@ -25,6 +25,7 @@ class OrderManager {
 	private:
 		int _piston_rod_part_count, _gear_part_count, _curr_kit, _curr_kit_index;
 		int _curr_piston_part_count, _curr_gear_part_count, _actual_piston_part_count, _actual_gear_part_count;
+		size_t erase_index;
 		bool _once_callback_done;
 		tf::TransformListener tf_logical_to_world;
 		tf::StampedTransform _logical_to_world_;
@@ -49,6 +50,7 @@ class OrderManager {
 		std::map<int, std::map<std::string, std::queue<geometry_msgs::Pose> > > _kits; 
 		std::map<int, std::vector<std::string> > _kits_comp;
 		std::map<std::string, std::vector<double> > _conveyorPartsTime;
+		std::vector<std::string> _conveyorPartTypes;
 
 		bool isKitCompleted();
 

@@ -13,8 +13,9 @@ class PickAndPlace {
 private:
 	ros::NodeHandle nh_;
 	geometry_msgs::Pose _homePose;
-	geometry_msgs::Quaternion _home_orientation;
+	geometry_msgs::Quaternion _home_orientation, _tray_orientation;
 	geometry_msgs::Vector3 _home_position;
+	geometry_msgs::Point _home_pt;
 	osrf_gear::VacuumGripperControl gripper_srv;
 	ros::ServiceClient gripper_client;
 	ros::Subscriber gripperStateSubscriber;
@@ -28,18 +29,19 @@ private:
 
 	moveit::planning_interface::MoveGroup::Plan my_plan;
 
-	float _tray_location_x, _tray_location_y, _tray_location_z, _tray_length;
+	float _tray_location_x, _tray_location_y, _tray_location_z, _tray_length, _tray_1_x, _tray_1_y, _tray_1_z;
 
 	double test_x, test_y, test_z, conveyor_x, conveyor_y, conveyor_z;
 
 	std::vector<double> home_joint_values, base_link_end_values, base_link_end_values_2, return_home_joint_values, conveyor_joint_values;
 	int index;
 
-	bool _isPartAttached, _nowExecuting;
-
+	bool _isPartAttached, _nowExecuting, _conveyorPartPicked;
+	
 	void initialSetup();
 	void goHome();
 	void goHome2();
+	void setHome(); 
 	float getRandomValue();
 
 public:

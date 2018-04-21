@@ -35,8 +35,8 @@
     beltVeloctiyDetermined = false;
     partAccounted = false;
     partAdded = false;
-    avgManipSpeed = 2 / 3.464;
-    inPlaceRotConveyor = 3.852;
+    avgManipSpeed = 2.1 / 3.464;
+    inPlaceRotConveyor = 0.2;
 
     try {
         this->tf_tray_to_world.waitForTransform("/world", "logical_camera_over_agv2_kit_tray_2_frame", ros::Time(0), ros::Duration(100.0) );
@@ -194,13 +194,15 @@
       startTime = ros::Time::now().toSec();
       partAccounted = true;
       start_pose_y = image_msg.models[0].pose.position.y;
-    } else if (!image_msg.models.empty() && partAccounted && abs(image_msg.models[0].pose.position.y) < 0.01 && !partAdded) {
+    } else if (!image_msg.models.empty() && partAccounted && abs(image_msg.models[0].pose.position.y) < 0.001 && !partAdded) {
       // camera_obj = image_msg;
       //cout<<camera_obj.models[0].type;
        ROS_WARN("Got the point near to the centre Point");
        endTime = ros::Time::now().toSec();
       std::string obj_type_conveyor = image_msg.models[0].type;
       _conveyorPartsTime[obj_type_conveyor].push_back(endTime);
+      if (std::find(_conveyorPartTypes.begin(), _conveyorPartTypes.end(), obj_type_conveyor) == _conveyorPartTypes.end())
+        _conveyorPartTypes.push_back(obj_type_conveyor);
       partAdded = true;
       if (!beltVeloctiyDetermined) {
         // ROS_INFO_STREAM("The start pose is : " << start_pose_y);
@@ -265,31 +267,73 @@
       conveyorPartDetected = false;
 
       if (_conveyorPartsTime.size() > 0) {
-        std::map<std::string, std::vector<double> >::iterator it = _conveyorPartsTime.begin();
         bool feasibleConveyorPartFound = false;
         double x = 0;
-        while (it != _conveyorPartsTime.end() && !feasibleConveyorPartFound) {
-          std::vector<double> tempTimes = it->second;
+        std::list<int> erase_indices;
+        for (size_t j = 0; j < _conveyorPartTypes.size() && !feasibleConveyorPartFound; j++) {
+          if(_kits[_curr_kit][_conveyorPartTypes[j]].size() == 0)
+              continue;
+          std::vector<double> tempTimes = _conveyorPartsTime[_conveyorPartTypes[j]];
           for (size_t i = 0; i < tempTimes.size(); i++){
             double delta_x = belt_velocity * (inPlaceRotConveyor + (ros::Time::now().toSec() - tempTimes[i]));
-            // ROS_INFO_STREAM("delta_x: " << delta_x);
-            if (delta_x > 2.5){
+            ROS_INFO_STREAM("delta_x: " << delta_x);
+            if (delta_x > 2){
+              erase_indices.push_back(i);
               continue;
             }
             else {
               feasibleConveyorPartFound = true;
-              x = (4.5 - delta_x) / (1 + belt_velocity / avgManipSpeed);
+              erase_index = i;
+              // x = (4.5 - delta_x) / (1 + belt_velocity / avgManipSpeed);
+              x = (delta_x) / (1 + belt_velocity / avgManipSpeed);
+              x = 2 - x;
               ROS_INFO_STREAM(" Picking Location on Conveyor : " << x);
+              _obj_type_conveyor = _conveyorPartTypes[j];
               break;
             }
           }
-          ++it;
+          // std::list<int>::iterator it2 = erase_indices.begin();
+          // while (it2 ! = erase_indices.end()) {
+          //   _conveyorPartsTime[_obj_type_conveyor].erase(_conveyorPartsTime.begin() + erase_index)
+          // }
         }
+
+        // std::map<std::string, std::vector<double> >::iterator it = _conveyorPartsTime.begin();
+        // bool feasibleConveyorPartFound = false;
+        // double x = 0;
+        // std::list<int> erase_indices;
+        // while (it != _conveyorPartsTime.end() && !feasibleConveyorPartFound) {
+        //   std::vector<double> tempTimes = it->second;
+        //   for (size_t i = 0; i < tempTimes.size(); i++){
+        //     double delta_x = belt_velocity * (inPlaceRotConveyor + (ros::Time::now().toSec() - tempTimes[i]));
+        //     ROS_INFO_STREAM("delta_x: " << delta_x);
+        //     if (delta_x > 4){
+        //       erase_indices.push_back(i);
+        //       continue;
+        //     }
+        //     else {
+        //       feasibleConveyorPartFound = true;
+        //       erase_index = i;
+        //       // x = (4.5 - delta_x) / (1 + belt_velocity / avgManipSpeed);
+        //       x = (delta_x) / (1 + belt_velocity / avgManipSpeed);
+        //       x = 2 - x;
+        //       ROS_INFO_STREAM(" Picking Location on Conveyor : " << x);
+        //       _obj_type_conveyor = it->first;
+        //       break;
+        //     }
+        //   }
+        //   // std::list<int>::iterator it2 = erase_indices.begin();
+        //   // while (it2 ! = erase_indices.end()) {
+        //   //   _conveyorPartsTime[_obj_type_conveyor].erase(_conveyorPartsTime.begin() + erase_index)
+        //   // }
+        //   ++it;
+        // }
+        ROS_WARN("Conveyor Part is going to be picked");
+        ROS_INFO_STREAM("Part type: " << _obj_type_conveyor);
 
         if (!feasibleConveyorPartFound)
           res.noPartFound = true;
 
-        _obj_type_conveyor = it->first;
         geometry_msgs::Pose pose = _kits[_curr_kit][_obj_type_conveyor].front();
         geometry_msgs::Quaternion q = pose.orientation;
         geometry_msgs::Point p = pose.position;
@@ -299,7 +343,7 @@
 
         tf::Transform partToTray(quatTarget, vect);
 
-        if ((_curr_kit) % 2 == 1)
+        if ((_curr_kit) % 2 == 0)
           targetToWorld = _tray_to_world_2 * partToTray;
         else
           targetToWorld = _tray_to_world_* partToTray;
@@ -325,7 +369,7 @@
 
         tf::Transform partToTray(quatTarget, vect);
 
-        if ((_curr_kit) % 2 == 1)
+        if ((_curr_kit) % 2 == 0)
           targetToWorld = _tray_to_world_2 * partToTray;
         else
           targetToWorld = _tray_to_world_* partToTray;
@@ -354,7 +398,7 @@
 
         tf::Transform partToTray(quatTarget, vect);
 
-        if ((_curr_kit) % 2 == 1)
+        if ((_curr_kit) % 2 == 0)
           targetToWorld = _tray_to_world_2 * partToTray;
         else
           targetToWorld = _tray_to_world_ * partToTray;
@@ -382,7 +426,7 @@
 
         tf::Transform partToTray(quatTarget, vect);
 
-        if ((_curr_kit) % 2 == 1)
+        if ((_curr_kit) % 2 == 0)
           targetToWorld = _tray_to_world_2 * partToTray;
         else
           targetToWorld = _tray_to_world_ * partToTray;
@@ -461,6 +505,7 @@
     if (conveyorPartDetected) {
         _kits[_curr_kit][_obj_type_conveyor].pop();
         conveyorPartDetected = false;
+        _conveyorPartsTime[_obj_type_conveyor].erase(_conveyorPartsTime[_obj_type_conveyor].begin() + erase_index);
     }
     else {
       _kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].pop();

@@ -69,11 +69,11 @@ int main(int argc, char* argv[]) {
 	    target_orientation = pointsrv.response.tgtorientation;
 
 	    if (pointsrv.response.conveyorPart) {
-	    	if (!pickPlace.pickPlaceNextPartConveyor(obj_pose, target_pose, target_orientation, !usedAGV2))
+	    	if (!pickPlace.pickPlaceNextPartConveyor(obj_pose, target_pose, target_orientation, usedAGV2))
 	    		continue;
 	    }
 
-	    else if (!pickPlace.pickAndPlace(obj_pose, obj_orientation, target_pose, target_orientation, !usedAGV2)) {
+	    else if (!pickPlace.pickAndPlace(obj_pose, obj_orientation, target_pose, target_orientation, usedAGV2)) {
 	    	continue;
 	    }
 	    
@@ -92,14 +92,14 @@ int main(int argc, char* argv[]) {
     ss << "order_0_kit_" << kit_num;
     std::string kit_type = ss.str();
 
-    if (!usedAGV2 && incPart.response.success) {
+    if (usedAGV2 && incPart.response.success) {
 		submissionclient = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv2");
-		usedAGV2 = true;
+		usedAGV2 = false;
 		kit_num += 1;
     }
-	else if (usedAGV2 && incPart.response.success){
+	else if (!usedAGV2 && incPart.response.success){
 		submissionclient = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv1");
-		usedAGV2 = false;
+		usedAGV2 = true;
 		kit_num += 1;
 	}
 	osrf_gear::AGVControl subsrv;
