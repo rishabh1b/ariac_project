@@ -23,7 +23,7 @@
   }
 
 
-  OrderManager::OrderManager(ros::NodeHandle n) {
+  OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double acceptable_delta) {
   	_piston_rod_part_count = 0;
   	_gear_part_count = 0;
   	_curr_piston_part_count = 1;
@@ -35,7 +35,8 @@
     beltVeloctiyDetermined = false;
     partAccounted = false;
     partAdded = false;
-    avgManipSpeed = 2.1 / 3.464;
+    this->avgManipSpeed = avgManipSpeed; //2.1 / 3.464;
+    this->acceptable_delta = acceptable_delta;
     inPlaceRotConveyor = 0.2;
 
     try {
@@ -271,13 +272,13 @@
         double x = 0;
         std::list<int> erase_indices;
         for (size_t j = 0; j < _conveyorPartTypes.size() && !feasibleConveyorPartFound; j++) {
-          if(_kits[_curr_kit][_conveyorPartTypes[j]].size() == 0)
+          if (_kits[_curr_kit].find(_conveyorPartTypes[j]) != _kits[_curr_kit].end() && _kits[_curr_kit][_conveyorPartTypes[j]].size() == 0)
               continue;
           std::vector<double> tempTimes = _conveyorPartsTime[_conveyorPartTypes[j]];
           for (size_t i = 0; i < tempTimes.size(); i++){
             double delta_x = belt_velocity * (inPlaceRotConveyor + (ros::Time::now().toSec() - tempTimes[i]));
             ROS_INFO_STREAM("delta_x: " << delta_x);
-            if (delta_x > 2){
+            if (delta_x > acceptable_delta){
               erase_indices.push_back(i);
               continue;
             }
@@ -292,11 +293,15 @@
               break;
             }
           }
+          // TODO : Remove Parts which should no longer be considered looking at erase_indices
           // std::list<int>::iterator it2 = erase_indices.begin();
           // while (it2 ! = erase_indices.end()) {
           //   _conveyorPartsTime[_obj_type_conveyor].erase(_conveyorPartsTime.begin() + erase_index)
           // }
         }
+
+        // The logic below was used to iterate over the _conveyorPartsTime map. Because, map under the hood is always sorted
+        // This is not an ideal approach
 
         // std::map<std::string, std::vector<double> >::iterator it = _conveyorPartsTime.begin();
         // bool feasibleConveyorPartFound = false;
@@ -348,6 +353,8 @@
         else
           targetToWorld = _tray_to_world_* partToTray;
 
+
+         // TODO : Add this parameter in the launch file
          double conveyor_x = 1.21;
          double conveyor_y = x;
          double conveyor_z = 0.93;
@@ -527,8 +534,13 @@
   {
     ros::init(argc, argv, "order_manager");
     ros::NodeHandle n;
+    ros::NodeHandle private_node_handle("~");
 
-    OrderManager orderManager(n);
+    double avgManipSpeed, acceptable_delta;
+    private_node_handle.getParam("manip_speed", avgManipSpeed);
+    private_node_handle.getParam("acceptable_delta", acceptable_delta);
+
+    OrderManager orderManager(n, avgManipSpeed, acceptable_delta);
     ROS_INFO("Service to provide points to pick the next part is now being provided");
     start_competition(n);
     ros::spin();

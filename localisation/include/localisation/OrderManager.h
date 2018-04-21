@@ -56,10 +56,10 @@ class OrderManager {
 
 		std::string _obj_type_conveyor;
 		bool conveyorPartDetected, beltVeloctiyDetermined, partAccounted, partAdded;
-		double belt_velocity, startTime, endTime, start_pose_y, avgManipSpeed, inPlaceRotConveyor;
+		double belt_velocity, startTime, endTime, start_pose_y, avgManipSpeed, inPlaceRotConveyor, acceptable_delta;
 
 	public:
-		OrderManager(ros::NodeHandle n);
+		OrderManager(ros::NodeHandle n, double avgManipSpeed = 0.606, double acceptable_delta = 2);
 		void  order_callback(const osrf_gear::Order::ConstPtr & order_msg);
 		void  source_pose_callback_bin7(const osrf_gear::LogicalCameraImage::ConstPtr & _msg);
 		void  source_pose_callback_bin6(const osrf_gear::LogicalCameraImage::ConstPtr & _msg);
