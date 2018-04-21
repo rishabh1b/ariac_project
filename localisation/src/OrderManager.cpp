@@ -127,6 +127,7 @@
 
   void OrderManager::order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
       //string str1=order_msg->order_id.c_str();
+      ROS_WARN("New Order Received!");
       if (_once_callback_done)
       	return;
 
@@ -134,7 +135,6 @@
       for (int j = 0; j < order_msg->kits.size(); j++) {
         osrf_gear::Kit kit= order_msg->kits[j];
         int num_parts = kit.objects.size();//Number of parts to move
-        //list<string>::const_iterator it;
         std::map<std::string, std::queue<geometry_msgs::Pose> > currKitPoses;
         std::vector<std::string> typeParts;
 
@@ -452,7 +452,7 @@
 
     else {
       res.noPartFound = true;
-      ROS_INFO_STREAM(" Current Kit Size before Modified : " << _kits[_curr_kit].size());
+      // ROS_INFO_STREAM(" Current Kit Size before Modified : " << _kits[_curr_kit].size());
       if (_kits[_curr_kit].size() > _curr_kit_index + 1)
         _curr_kit_index += 1;
     }
