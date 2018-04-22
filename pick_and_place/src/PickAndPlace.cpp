@@ -664,6 +664,7 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
     return false;
  }
 
+ ros::spinOnce();
  if(!_isPartAttached)
     return false;
 
@@ -726,7 +727,7 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
  target_pose2.orientation = _home_orientation;
  target_pose2.position.x = target_pose.x;
  target_pose2.position.y = target_pose.y;
- target_pose2.position.z = target_pose.z + _z_offset_from_part;
+ target_pose2.position.z = target_pose.z + _z_offset_from_part * 8;
  _manipulatorgroup.setPoseTarget(target_pose2);
  _manipulatorgroup.move();
   sleep(1.0);

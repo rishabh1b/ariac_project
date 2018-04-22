@@ -597,6 +597,8 @@
            _curr_kit_index = _old_kit_index;
            _curr_kit = _old_kit;
            serveHighPriority = false;
+           _old_kits.clear();
+           _old_kits_comp.clear();
       }
 
     } else {
