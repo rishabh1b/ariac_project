@@ -38,6 +38,7 @@ public :
 
     // New Service
     bool highPriorityService(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response) {
+    	ROS_WARN("Switching to High Priority Order");
     	highPriorityOrderReceived = true;
     }
 
@@ -47,6 +48,12 @@ public :
 
 		if (nextPointclient.call(pointsrv))
 	   {
+	   		if (highPriorityOrderReceived) {
+	    	   	highPriorityOrderReceived = false;
+	    	   	pickPlace.dropPartSafely(usedAGV2);
+	    	   	usedAGV2 = !usedAGV2;
+	    	}
+
 	   	if (pointsrv.response.noPartFound)
 	   		return false;
 	   	
@@ -59,15 +66,11 @@ public :
 	    target_orientation = pointsrv.response.tgtorientation;
 
 	    if (pointsrv.response.conveyorPart) {
-	    	if (!pickPlace.pickPlaceNextPartConveyor(obj_pose, target_pose, target_orientation, usedAGV2))
+	    	if (!pickPlace.pickPlaceNextPartConveyor(obj_pose, target_pose, target_orientation, !usedAGV2))
 	    		return true;
 	    }
 
-	    else if (!pickPlace.pickAndPlace(obj_pose, obj_orientation, target_pose, target_orientation, usedAGV2)) {
-	    	   if (highPriorityOrderReceived) {
-	    	   	highPriorityOrderReceived = false;
-	    	   	pickPlace.dropPartSafely(usedAGV2);
-	    	   }
+	    else if (!pickPlace.pickAndPlace(obj_pose, obj_orientation, target_pose, target_orientation, !usedAGV2)) {
 	    	   return true;
 	    }
 	    
@@ -83,14 +86,14 @@ public :
 	    ss << "order_0_kit_" << kit_num;
 	    std::string kit_type = ss.str();
 
-	    if (usedAGV2 && incPart.response.success) {
+	    if (!usedAGV2 && incPart.response.success) {
 			submissionclient = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv2");
-			usedAGV2 = false;
+			usedAGV2 = true;
 			kit_num += 1;
 	    }
-		else if (!usedAGV2 && incPart.response.success){
+		else if (usedAGV2 && incPart.response.success){
 			submissionclient = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv1");
-			usedAGV2 = true;
+			usedAGV2 = false;
 			kit_num += 1;
 		}
 

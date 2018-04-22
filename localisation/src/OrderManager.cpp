@@ -20,6 +20,7 @@
     } else {
       ROS_INFO("Competition started!");
     }
+
   }
 
 
@@ -35,6 +36,8 @@
     beltVeloctiyDetermined = false;
     partAccounted = false;
     partAdded = false;
+    serveHighPriority = false;
+    changedPriority = false;
     this->avgManipSpeed = avgManipSpeed; //2.1 / 3.464;
     this->acceptable_delta = acceptable_delta;
     inPlaceRotConveyor = 0.2;
@@ -86,6 +89,21 @@
     }
 
     try {
+        this->tf_cam_bin8_to_world.waitForTransform("/world", "/logical_camera_bin8_frame", ros::Time(0), ros::Duration(30.0) );
+    } catch (tf::TransformException &ex) {
+        ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
+        ros::Duration(10.0).sleep();
+    }
+
+    try {
+      this->tf_cam_bin8_to_world.lookupTransform("/world", "/logical_camera_bin8_frame", ros::Time(0), (this->_cam_bin8_to_world_));
+    }
+
+    catch (tf::TransformException &ex) {
+      ROS_ERROR("[pick_and_place]: (lookup) %s", ex.what());
+    }
+
+    try {
         this->tf_cam_bin6_to_world.waitForTransform("/world", "/logical_camera_bin6_frame", ros::Time(0), ros::Duration(30.0) );
     } catch (tf::TransformException &ex) {
         ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
@@ -118,10 +136,12 @@
   	this->nh_ = n;
   	service = nh_.advertiseService("logical_camera_server", &OrderManager::get_pose, this);
     highPriorityClient = nh_.serviceClient<std_srvs::Empty>("high_priority_server");
+    highPriorityOmClient = nh_.serviceClient<std_srvs::Empty>("high_priority_om_server");
   	orders_subscriber = nh_.subscribe("/ariac/orders", 10, &OrderManager::order_callback, this);
     bin7_subscriber = nh_.subscribe("/ariac/logical_camera_bin7", 10, &OrderManager::source_pose_callback_bin7, this);
     bin6_subscriber = nh_.subscribe("/ariac/logical_camera_bin6", 10, &OrderManager::source_pose_callback_bin6, this);
     bin5_subscriber = nh_.subscribe("/ariac/logical_camera_bin5", 10, &OrderManager::source_pose_callback_bin5, this);
+    bin8_subscriber = nh_.subscribe("/ariac/logical_camera_bin8", 10, &OrderManager::source_pose_callback_bin8, this);
     logical_cam_belt_sub = nh_.subscribe("/ariac/logical_camera_over_conveyor", 1, &OrderManager::logical_camera_callback, this);
     incrementservice = nh_.advertiseService("incrementPart", &OrderManager::incrementCompletedPart, this);
   }
@@ -138,7 +158,10 @@
        _kits_comp.clear();
 
        std_srvs::Empty highPriority;
-       highPriorityClient.call(highPriority);
+       highPriorityOmClient.call(highPriority);
+       serveHighPriority = true;
+       changedPriority = true;
+       // highPriorityClient.call(highPriority);
       }
 
       std::stack<geometry_msgs::Pose> targetPosesGear, targetPosesPiston, targetPoses;
@@ -180,20 +203,23 @@
 
     void OrderManager::source_pose_callback_bin7(const osrf_gear::LogicalCameraImage::ConstPtr & _msg) {
         if(_msg->models.size() > 0)
-          _next_pose_piston = _msg->models[0].pose;
+          _next_pose_gasket = _msg->models[0].pose;
+    }
 
+    void OrderManager::source_pose_callback_bin8(const osrf_gear::LogicalCameraImage::ConstPtr & _msg) {
+        if(_msg->models.size() > 0)
+          _next_pose_disk = _msg->models[0].pose;
     }
 
     void OrderManager::source_pose_callback_bin6(const osrf_gear::LogicalCameraImage::ConstPtr & _msg) {
         if(_msg->models.size() > 0)
-          _next_pose_gear = _msg->models[0].pose;
+          _next_pose_piston = _msg->models[0].pose;
 
     }
 
     void OrderManager::source_pose_callback_bin5(const osrf_gear::LogicalCameraImage::ConstPtr & _msg) {
         if(_msg->models.size() > 0)
-          _next_pose_disk = _msg->models[0].pose;
-
+          _next_pose_gear = _msg->models[0].pose;
     }
 
   void OrderManager::logical_camera_callback(const osrf_gear::LogicalCameraImage& image_msg){
@@ -255,8 +281,8 @@
     if (!_once_callback_done)
         return false;
 
-  	// if (_piston_rod_part_count == 0)
-  	// 	return false;
+    if (changedPriority)
+      changedPriority = false;
 
   	if (req.request_msg == true) {
   		ROS_INFO("sending back response");
@@ -358,7 +384,7 @@
 
         tf::Transform partToTray(quatTarget, vect);
 
-        if ((_curr_kit) % 2 == 0)
+        if ((_curr_kit) % 2 == 0 && !serveHighPriority)
           targetToWorld = _tray_to_world_2 * partToTray;
         else
           targetToWorld = _tray_to_world_* partToTray;
@@ -386,7 +412,7 @@
 
         tf::Transform partToTray(quatTarget, vect);
 
-        if ((_curr_kit) % 2 == 0)
+        if ((_curr_kit) % 2 == 1 || serveHighPriority)
           targetToWorld = _tray_to_world_2 * partToTray;
         else
           targetToWorld = _tray_to_world_* partToTray;
@@ -400,7 +426,7 @@
 
         tf::Transform partToCam(quatSource, vect_s);
 
-        sourceToWorld = _cam_bin7_to_world_ * partToCam;
+        sourceToWorld = _cam_bin6_to_world_ * partToCam;
 
   		}
 
@@ -415,7 +441,7 @@
 
         tf::Transform partToTray(quatTarget, vect);
 
-        if ((_curr_kit) % 2 == 0)
+        if ((_curr_kit) % 2 == 1 || serveHighPriority)
           targetToWorld = _tray_to_world_2 * partToTray;
         else
           targetToWorld = _tray_to_world_ * partToTray;
@@ -429,7 +455,7 @@
 
       tf::Transform partToCam(quatSource, vect_s);
 
-      sourceToWorld = _cam_bin6_to_world_ * partToCam;
+      sourceToWorld = _cam_bin5_to_world_ * partToCam;
     }
 
     else if(_kits_comp[_curr_kit].at(_curr_kit_index).compare("disk_part") == 0 && _kits[_curr_kit]["disk_part"].size() > 0) {
@@ -443,7 +469,7 @@
 
         tf::Transform partToTray(quatTarget, vect);
 
-        if ((_curr_kit) % 2 == 0)
+        if ((_curr_kit) % 2 == 1 || serveHighPriority)
           targetToWorld = _tray_to_world_2 * partToTray;
         else
           targetToWorld = _tray_to_world_ * partToTray;
@@ -457,7 +483,36 @@
 
       tf::Transform partToCam(quatSource, vect_s);
 
-      sourceToWorld = _cam_bin5_to_world_ * partToCam;
+      sourceToWorld = _cam_bin8_to_world_ * partToCam;
+    }
+
+
+    else if(_kits_comp[_curr_kit].at(_curr_kit_index).compare("gasket_part") == 0 && _kits[_curr_kit]["gasket_part"].size() > 0) {
+        // geometry_msgs::Pose pose = _targetPosesGear.top();
+        geometry_msgs::Pose pose =  _kits[_curr_kit]["gasket_part"].front();
+        geometry_msgs::Quaternion q = pose.orientation;
+        geometry_msgs::Point p = pose.position;
+
+        tf::Quaternion quatTarget(q.x, q.y, q.z, q.w);
+        tf::Vector3 vect(p.x, p.y, p.z);
+
+        tf::Transform partToTray(quatTarget, vect);
+
+        if ((_curr_kit) % 2 == 1 || serveHighPriority)
+          targetToWorld = _tray_to_world_2 * partToTray;
+        else
+          targetToWorld = _tray_to_world_ * partToTray;
+
+        // Get the Source Pose
+      geometry_msgs::Quaternion q_s = _next_pose_gasket.orientation;
+      geometry_msgs::Point p_s = _next_pose_gasket.position;
+
+      tf::Quaternion quatSource(q_s.x, q_s.y, q_s.z, q_s.w);
+      tf::Vector3 vect_s(p_s.x, p_s.y, p_s.z);
+
+      tf::Transform partToCam(quatSource, vect_s);
+
+      sourceToWorld = _cam_bin7_to_world_ * partToCam;
     }
 
     else {
@@ -483,9 +538,9 @@
       ROS_INFO_STREAM("part drop location x: "<< vec2.x);
       ROS_INFO_STREAM("part drop location y: "<< vec2.y);
       ROS_INFO_STREAM("part drop location z: "<< vec2.z);
-      ROS_INFO_STREAM("Tray x: "<< _tray_to_world_.getOrigin().x());
-      ROS_INFO_STREAM("Tray y: "<< _tray_to_world_.getOrigin().y());
-      ROS_INFO_STREAM("Tray z: "<< _tray_to_world_.getOrigin().z());
+      // ROS_INFO_STREAM("Tray x: "<< _tray_to_world_.getOrigin().x());
+      // ROS_INFO_STREAM("Tray y: "<< _tray_to_world_.getOrigin().y());
+      // ROS_INFO_STREAM("Tray z: "<< _tray_to_world_.getOrigin().z());
       ROS_INFO_STREAM("Part pick location x: "<< vec.x);
       ROS_INFO_STREAM("Part pick location y: "<< vec.y);
       ROS_INFO_STREAM("Part pick location z: "<< vec.z);
@@ -525,7 +580,13 @@
         _conveyorPartsTime[_obj_type_conveyor].erase(_conveyorPartsTime[_obj_type_conveyor].begin() + erase_index);
     }
     else {
-      _kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].pop();
+        if (changedPriority) {
+          _old_kits[_old_kit][_old_kits_comp[_old_kit].at(_old_kit_index)].pop();
+          changedPriority = false;
+        }
+        else {
+          _kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].pop();
+        }
     }
 
     if (isKitCompleted()) {
@@ -535,6 +596,7 @@
             _kits_comp = _old_kits_comp;
            _curr_kit_index = _old_kit_index;
            _curr_kit = _old_kit;
+           serveHighPriority = false;
       }
 
     } else {

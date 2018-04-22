@@ -32,21 +32,21 @@ class OrderManager {
 		ros::NodeHandle nh_;
 		ros::ServiceServer service;
 		ros::ServiceServer incrementservice;
-		ros::ServiceClient highPriorityClient;
+		ros::ServiceClient highPriorityClient, highPriorityOmClient;
 		ros::Subscriber orders_subscriber;
 		ros::Subscriber bin7_subscriber;
-		ros::Subscriber bin6_subscriber, bin5_subscriber;
+		ros::Subscriber bin6_subscriber, bin5_subscriber, bin8_subscriber;
 		ros::Subscriber logical_cam_belt_sub;
 		tf::TransformListener tf_tray_to_world;
 		tf::TransformListener tf_cam_bin7_to_world;
-		tf::TransformListener tf_cam_bin6_to_world, tf_cam_bin5_to_world;
+		tf::TransformListener tf_cam_bin6_to_world, tf_cam_bin5_to_world, tf_cam_bin8_to_world;
 		tf::StampedTransform _tray_to_world_,_tray_to_world_2;
 		tf::StampedTransform _cam_bin7_to_world_;
-		tf::StampedTransform _cam_bin6_to_world_, _cam_bin5_to_world_;
+		tf::StampedTransform _cam_bin6_to_world_, _cam_bin5_to_world_, _cam_bin8_to_world_;
 
 	    std::stack<geometry_msgs::Pose> targetPoses; //_targetPosesPiston, _targetPosesGear;
 
-		geometry_msgs::Pose _next_pose_piston, _next_pose_gear, _next_pose_disk;
+		geometry_msgs::Pose _next_pose_piston, _next_pose_gear, _next_pose_disk, _next_pose_gasket;
 
 		std::map<int, std::map<std::string, std::queue<geometry_msgs::Pose> > > _kits, _old_kits; 
 		std::map<int, std::vector<std::string> > _kits_comp, _old_kits_comp;
@@ -56,7 +56,7 @@ class OrderManager {
 		bool isKitCompleted();
 
 		std::string _obj_type_conveyor;
-		bool conveyorPartDetected, beltVeloctiyDetermined, partAccounted, partAdded;
+		bool conveyorPartDetected, beltVeloctiyDetermined, partAccounted, partAdded, serveHighPriority, changedPriority;
 		double belt_velocity, startTime, endTime, start_pose_y, avgManipSpeed, inPlaceRotConveyor, acceptable_delta;
 
 	public:
@@ -65,6 +65,7 @@ class OrderManager {
 		void  source_pose_callback_bin7(const osrf_gear::LogicalCameraImage::ConstPtr & _msg);
 		void  source_pose_callback_bin6(const osrf_gear::LogicalCameraImage::ConstPtr & _msg);
 		void  source_pose_callback_bin5(const osrf_gear::LogicalCameraImage::ConstPtr & _msg);
+		void  source_pose_callback_bin8(const osrf_gear::LogicalCameraImage::ConstPtr & _msg);
 		void  logical_camera_callback(const osrf_gear::LogicalCameraImage& image_msg);
 		bool  get_pose(localisation::request_logical_pose::Request  &req, localisation::request_logical_pose::Response &res);
 		// bool incrementCompletedPart(std_srvs::Empty::Request& request, std_srvs::Empty::Response& response);
