@@ -372,22 +372,22 @@ void PickAndPlace::pickNextPart() {
   spinner.start();
   sleep(2.0);
 
-    _manipulatorgroup.setJointValueTarget(base_link_end_values_2);
-    bool success = _manipulatorgroup.plan(my_plan);
-    _manipulatorgroup.move();
-    sleep(1.0);
+    // _manipulatorgroup.setJointValueTarget(base_link_end_values_2);
+    // bool success = _manipulatorgroup.plan(my_plan);
+    // _manipulatorgroup.move();
+    // sleep(1.0);
 
  //  double t2 = ros::Time::now().toSec();
  //  ROS_INFO_STREAM("The in Place Rotation Time is: " << t2-t1);
-	// geometry_msgs::Pose target_pose1;
-	// target_pose1.orientation = _home_orientation;
+	geometry_msgs::Pose target_pose1;
+	target_pose1.orientation = _home_orientation;
 
  //    t1 = ros::Time::now().toSec();
- //  	target_pose1.position.x = test_x;
- //  	target_pose1.position.y = test_y;
- //  	target_pose1.position.z = test_z + _z_offset_from_part;
-	// _manipulatorgroup.setPoseTarget(target_pose1);
-	// _manipulatorgroup.move();
+  	target_pose1.position.x = test_x;
+  	target_pose1.position.y = test_y;
+  	target_pose1.position.z = test_z + _z_offset_from_part;
+	_manipulatorgroup.setPoseTarget(target_pose1);
+	_manipulatorgroup.move();
  //    sleep(1.0);
  //    t2 = ros::Time::now().toSec();
  //    ROS_INFO_STREAM("The moving to the end of beam time is: " << t2-t1);
@@ -415,14 +415,14 @@ void PickAndPlace::pickNextPart() {
  //  sleep(1.0);
 
   // _manipulatorgroup.setPlanningTime(10);
-  geometry_msgs::Pose target_pose2;
-  target_pose2.orientation = _home_orientation;
-  target_pose2.position.x = _tray_1_x;
- target_pose2.position.y = _tray_1_y;
- target_pose2.position.z = _tray_1_z;
- _manipulatorgroup.setPoseTarget(target_pose2);
- _manipulatorgroup.move();
-  sleep(1.0);
+ //  geometry_msgs::Pose target_pose2;
+ //  target_pose2.orientation = _home_orientation;
+ //  target_pose2.position.x = _tray_1_x;
+ // target_pose2.position.y = _tray_1_y;
+ // target_pose2.position.z = _tray_1_z;
+ // _manipulatorgroup.setPoseTarget(target_pose2);
+ // _manipulatorgroup.move();
+ //  sleep(1.0);
   // goHome();
   // goHome2();
 }
