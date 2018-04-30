@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>ariac_qual_1</name>
+  <name>ariac_comp</name>
   <version>0.1.0</version>
-  <description>Implementation for ARIAC qual 1.</description>
+  <description>Implementation for ARIAC competition</description>
   <maintainer email="rbiyani@umd.edu">Rishabh Biyani</maintainer>
 
   <license>Apache 2.0</license>
@@ -21,7 +21,6 @@
   <build_depend>roscpp</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>localisation</build_depend>
-  <build_depend>sensor_msgs</build_depend>
   <build_depend>pick_and_place</build_depend>
   <build_depend>std_srvs</build_depend>
   <build_depend>trajectory_msgs</build_depend>

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+
+<node pkg = "pick_and_place" name = "basic_pick_place" type="pick_and_place_node" output = "screen">
+<param name = "joint1" value = "3.2" />
+<param name = "joint2" value = "-1.1" /> <!-- -1.048 -->
+<param name = "joint3" value = "1.9" />  <!-- 1.048 -->	
+<param name = "joint4" value = "4" />  <!-- 3.67 -->
+<param name = "joint5" value = "4.7" />   <!-- 1.57 -->
+<param name = "joint6" value = "0" />
+<param name = "z_offset" value = "0.04" />
+</node>
+
+</launch>

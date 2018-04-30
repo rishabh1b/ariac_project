@@ -1,0 +1,9 @@
+bool request_msg
+---
+geometry_msgs/Vector3 position
+geometry_msgs/Quaternion orientation
+geometry_msgs/Quaternion tgtorientation
+geometry_msgs/Vector3 tgtposition
+bool order_completed
+bool conveyorPart
+bool noPartFound
