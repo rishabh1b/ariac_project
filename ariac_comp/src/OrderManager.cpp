@@ -123,8 +123,8 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
     if (image_msg.models.empty() && partAdded) {
        partAccounted = false;
        partAdded = false;
-
     } else if (!image_msg.models.empty() && !partAccounted) {
+      ROS_INFO_STREAM(" The Position of part is : " << image_msg.models[0].pose.position.x);
       startTime = ros::Time::now().toSec();
       partAccounted = true;
       start_pose_y = image_msg.models[0].pose.position.y;

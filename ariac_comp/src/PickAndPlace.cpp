@@ -64,7 +64,7 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
 }
 // Method to bring UR10 in proper position and orientation
 void PickAndPlace::initialSetup() {
-  // goHome();
+  goHome();
   tf::StampedTransform transform;
   tf::StampedTransform worldtransform;
   tf::TransformListener listener; 
@@ -166,12 +166,42 @@ void PickAndPlace::initialSetup() {
   fillPartLocation("disk_part");
   fillPartLocation("pulley_part");
 
+  // Setup Bins
+  Bin bin5("bin5", -0.093, -0.741 - 0.765, 0.72);
+  Bin bin6("bin6", -0.093, -0.741, 0.72);
+  Bin bin7("bin7", -0.093, -0.741 + 0.765, 0.72);
+  Bin bin8("bin8", -0.093, -0.741 + 1.53, 0.72);
+
+  binMap.insert(std::make_pair("bin5", bin5));
+  binMap.insert(std::make_pair("bin6", bin6));
+  binMap.insert(std::make_pair("bin7", bin7));
+  binMap.insert(std::make_pair("bin8", bin8));
   // Check whether map is properly populated
   std::map<std::string, std::string>::iterator it = partLocation.begin();
 
   ROS_WARN("Printing PartLocation Map");
   while (it != partLocation.end()) {
     std::cout << " For Part Type " << it->first << " the location is " << it->second << std::endl;
+    if (it->first == "piston_rod_part"){
+      binMap[it->second].z_offset_from_part = _z_offset_from_part ;
+      binMap[it->second].resolution = 0.12;
+    }
+    else if (it->first == "gear_part"){
+      binMap[it->second].z_offset_from_part = _z_offset_from_part * 1.6;
+      binMap[it->second].resolution = 0.12;
+    }
+    else if (it->first == "disk_part"){
+      binMap[it->second].z_offset_from_part = _z_offset_from_part * 2;
+      binMap[it->second].resolution = 0.15;
+    }
+    else if (it->first == "gasket_part") {
+      binMap[it->second].z_offset_from_part = _z_offset_from_part * 1.8;
+      binMap[it->second].resolution = 0.15;
+    }
+    else if (it->first == "pulley_part"){
+      binMap[it->second].z_offset_from_part = _z_offset_from_part * 7;
+      binMap[it->second].resolution = 0.3;
+    }
     ++it;
   }
 
@@ -180,11 +210,20 @@ void PickAndPlace::initialSetup() {
 void PickAndPlace::fillPartLocation(std::string mat_type) {
   mat_location_srv.request.material_type = mat_type;
   mat_location_client.call(mat_location_srv);
-  if (mat_location_srv.response.storage_units.size() > 0 && mat_location_srv.response.storage_units[0].unit_id.compare("belt") != 0) 
+  if (mat_location_srv.response.storage_units.size() > 0 && mat_location_srv.response.storage_units[0].unit_id.compare("belt") != 0) {
     partLocation.insert(std::make_pair(mat_type, mat_location_srv.response.storage_units[0].unit_id));
+  }
 }
 
 bool PickAndPlace::pickNextPartBin(std::string partType) {
+  // Test
+  gripper_srv.request.enable = false;
+
+  if (gripper_client.call(gripper_srv))
+  {
+    ROS_INFO("Gripper Service Called");
+  }
+ 
   ROS_INFO("Picking the Next Part From Bin");
   ros::AsyncSpinner spinner(1);
   spinner.start();
@@ -193,15 +232,72 @@ bool PickAndPlace::pickNextPartBin(std::string partType) {
   geometry_msgs::Pose target_pose1;
   target_pose1.orientation = _home_orientation;
 
-  // A Logic in a Loop which tries to find the part blindly based on the bin location
+
+  // Turn the Gripper onby activating the suction
+  gripper_srv.request.enable = true;
+
+  if (gripper_client.call(gripper_srv))
+  {
+    ROS_INFO("Gripper Service Called");
+  }
+ 
+  // Wait for a bit 
+  // sleep(3.0);
+
+  // A Logic in a Loop which tries to find the part blindly based on the bin location 
+  bool overflow = false;
+  for (int i = 0; i < 8; i++) { // At Max Three Trials
+    target_pose1.position.x = binMap[partLocation[partType]].start_x;
+    target_pose1.position.y = binMap[partLocation[partType]].start_y;
+    if (overflow){
+      target_pose1.position.z = binMap[partLocation[partType]].start_z + binMap[partLocation[partType]].z_offset_from_part * 2;
+     _manipulatorgroup.setPoseTarget(target_pose1);
+     _manipulatorgroup.move();
+      sleep(0.2);
+      overflow = false;
+    }
+
+    target_pose1.position.z = binMap[partLocation[partType]].start_z + binMap[partLocation[partType]].z_offset_from_part;
+   _manipulatorgroup.setPoseTarget(target_pose1);
+   _manipulatorgroup.move();
+    sleep(3);
+
+    // Lift the arm a little up
+    ros::spinOnce();
+    target_pose1.position.z = binMap[partLocation[partType]].start_z + binMap[partLocation[partType]].z_offset_from_part * 4;
+   _manipulatorgroup.setPoseTarget(target_pose1);
+   _manipulatorgroup.move();
+    sleep(0.1);
+    ros::spinOnce();
+
+    if (_isPartAttached) {
+      // binMap[partLocation[partType]].start_z = binMap[partLocation[partType]].start_z + binMap[partLocation[partType]].z_offset_from_part * 4;
+      binMap[partLocation[partType]].incStep();
+      break;
+    }
+
+      if (!binMap[partLocation[partType]].checkOverflow()) {
+        target_pose1.position.x = target_pose1.position.x - std::abs(binMap[partLocation[partType]].resolution);
+        target_pose1.position.y = target_pose1.position.y + binMap[partLocation[partType]].resolution;
+        // target_pose1.position.z = binMap[partLocation[partType]].start_z + _z_offset_from_part * 5;
+       _manipulatorgroup.setPoseTarget(target_pose1);
+       _manipulatorgroup.move();
+        sleep(0.1);
+      } else {
+        overflow = true;
+      }
+
+     ros::spinOnce();
+     binMap[partLocation[partType]].incStep();
+  }
 
 } 
 
 bool PickAndPlace::pickNextPart(geometry_msgs::Vector3 obj_pose, geometry_msgs::Quaternion orientation) {
   ROS_INFO("Picking the Next Part");
   ros::AsyncSpinner spinner(1);
-    spinner.start();
-    sleep(2.0);
+  spinner.start();
+  sleep(2.0);
 
   geometry_msgs::Pose target_pose1;
   target_pose1.orientation = _home_orientation;
@@ -421,11 +517,36 @@ void PickAndPlace::pickNextPart() {
 	target_pose1.orientation = _home_orientation;
 
  //    t1 = ros::Time::now().toSec();
-  	target_pose1.position.x = test_x;
-  	target_pose1.position.y = test_y;
-  	target_pose1.position.z = test_z + _z_offset_from_part;
-	_manipulatorgroup.setPoseTarget(target_pose1);
+ //  	target_pose1.position.x = test_x - 0.06;
+ //  	target_pose1.position.y = test_y + 0.06;
+ //  	target_pose1.position.z = test_z + _z_offset_from_part * 1.5;
+	// _manipulatorgroup.setPoseTarget(target_pose1);
+  target_pose1.position.x = -0.093;
+  target_pose1.position.y = -0.741;
+  target_pose1.position.z = test_z + _z_offset_from_part * 1.5;
+  _manipulatorgroup.setPoseTarget(target_pose1);
 	_manipulatorgroup.move();
+
+  for (int i = 0; i < 4; i++) {
+    // Lift the arm a little up
+    target_pose1.position.z = test_z + _z_offset_from_part * 5;
+   _manipulatorgroup.setPoseTarget(target_pose1);
+   _manipulatorgroup.move();
+    sleep(0.1);
+    target_pose1.position.x = target_pose1.position.x - 0.1;
+    target_pose1.position.y = target_pose1.position.y + 0.1;
+    target_pose1.position.z = test_z + _z_offset_from_part * 5;
+   _manipulatorgroup.setPoseTarget(target_pose1);
+   _manipulatorgroup.move();
+    sleep(0.1);
+    target_pose1.position.z = test_z + _z_offset_from_part;
+   _manipulatorgroup.setPoseTarget(target_pose1);
+   _manipulatorgroup.move();
+    sleep(0.1);
+    target_pose1.position.z = test_z + _z_offset_from_part * 1.5;
+   _manipulatorgroup.setPoseTarget(target_pose1);
+   _manipulatorgroup.move();
+  }
  //    sleep(1.0);
  //    t2 = ros::Time::now().toSec();
  //    ROS_INFO_STREAM("The moving to the end of beam time is: " << t2-t1);
@@ -803,7 +924,9 @@ int main(int argc, char* argv[]) {
 
     // ROS_INFO_STREAM("Initial Joint 6: " << initialjoints[6] << "\n");
 	PickAndPlace pickPlace(n, initialjoints, z_offset_from_part, part_location, tray_length);
-	pickPlace.pickNextPart();
+	// pickPlace.pickNextPart();
+  // pickPlace.pickNextPartBin("piston_rod_part");
+  pickPlace.pickNextPartBin("gear_part");
 	// pickPlace.place();
 
 	return 0;

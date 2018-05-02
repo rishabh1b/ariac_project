@@ -12,6 +12,48 @@
 #include <osrf_gear/VacuumGripperState.h>
 #include <osrf_gear/StorageUnit.h>
 
+struct Bin {
+	double resolution, orig_start_x, orig_start_y, start_x, start_y, start_z, z_offset_from_part;
+	int curr_step;
+	bool is_res_set, is_offset_set;
+	std::string bin_name;
+
+	Bin() {
+		start_x = 0;
+	    start_y = 0;
+		start_z = 0.72;
+		bin_name = "bin";
+		curr_step = 0;
+		is_res_set = false;
+	}
+
+	bool checkOverflow() {
+		return ((curr_step + 1) > (0.6 - std::abs(resolution)) / std::abs(resolution) - 1);
+	}
+	
+	Bin(std::string bin, double start_loc_x, double start_loc_y, double start_loc_z) {
+		orig_start_x = start_loc_x;
+		orig_start_y = start_loc_y;
+		start_x = start_loc_x;
+		start_y = start_loc_y;
+		start_z = start_loc_z;
+		bin_name = bin;
+		curr_step = 0;
+		is_res_set = false;
+	}
+	void incStep() {
+		curr_step += 1;
+		start_x = start_x - std::abs(resolution);
+		start_y = start_y + resolution;
+		if (curr_step > (0.6 - std::abs(resolution)) / std::abs(resolution) - 1) {
+			start_x = orig_start_x;
+			start_y = orig_start_y + 0.4;
+			resolution = -resolution;
+			curr_step = 0;
+		}
+	}	
+};
+
 class PickAndPlace {
 private:
 	ros::NodeHandle nh_;
@@ -43,6 +85,8 @@ private:
 	bool _isPartAttached, _nowExecuting, _conveyorPartPicked;
 	
 	std::map<std::string, std::string> partLocation;
+	std::map<std::string, Bin> binMap;
+
 	void initialSetup();
 	void goHome();
 	void goHome2();
