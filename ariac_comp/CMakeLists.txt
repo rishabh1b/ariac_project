@@ -63,6 +63,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
    FILES
    request_next_pose.srv
+   request_part_scan_pose.srv
  )
 
 ## Generate actions in the 'action' folder

@@ -2,12 +2,13 @@
 
 OrderFullfiller::OrderFullfiller(ros::NodeHandle n) {
      this->n = n;
-	 nextPartclient = n.serviceClient<ariac_comp::request_next_pose>("logical_camera_server");
+     partPoseclient = n.serviceClient<ariac_comp::request_part_scan_pose>("part_scan_pose");
+	 nextPartclient = n.serviceClient<ariac_comp::request_next_pose>("next_pose_server");
 	 incrementclient = n.serviceClient<std_srvs::Trigger>("incrementPart");
 	 // highPriorityServer = n.advertiseService("high_priority_om_server", &FloorManager::highPriorityService, this);
 	 pointsrv.request.request_msg = true;
 	 kit_num = 0;
-	 usedAGV2 = false;
+	 useAGV2 = false;
 	 highPriorityOrderReceived = false;
 }
 
@@ -16,11 +17,6 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
 
 	if (nextPartclient.call(pointsrv))
    {
-   		// if (highPriorityOrderReceived) {
-    	//    	highPriorityOrderReceived = false;
-    	//    	pickPlace.dropPartSafely(usedAGV2);
-    	//    	usedAGV2 = !usedAGV2;
-    	// }
 
    	if (pointsrv.response.noPartFound)
    		return false;
@@ -28,24 +24,44 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
    	if (pointsrv.response.order_completed)
    		return false;
 
+   	std::string partType = pointsrv.response.partType;
     obj_pose = pointsrv.response.position;
-    target_pose = pointsrv.response.tgtposition;
+    target_position = pointsrv.response.tgtposition;
     obj_orientation = pointsrv.response.orientation;
     target_orientation = pointsrv.response.tgtorientation;
 
+    // Needs Modification - Need to decouple 
     if (pointsrv.response.conveyorPart) {
-    	if (!pickPlace.pickPlaceNextPartConveyor(obj_pose, target_pose, target_orientation, !usedAGV2))
+    	if (!pickPlace.pickPlaceNextPartConveyor(obj_pose, target_position, target_orientation, useAGV2))
     		return true;
     }
 
-    else if (!pickPlace.pickAndPlace(obj_pose, obj_orientation, target_pose, target_orientation, !usedAGV2)) {
-    	   return true;
+    else {
+    	bool partPicked = false;
+    	while (!partPicked) {
+    		if (!pickPlace.pickNextPartBin(partType))
+    			continue;
+    		pickPlace.goToScanLocation();
+    		// if (!pickPlace.goToScanLocation())
+    		// 	continue;
+    		partPicked = true;
+    	}
+
+    	if (partPoseclient.call(scanPose)) {
+    		if (!pickPlace.place(scanPose.response.pose.translation, scanPose.response.pose.rotation, target_position, target_orientation, useAGV2))
+    			return true;
+    	}
+
     }
+    // else if (!pickPlace.pickAndPlace(obj_pose, obj_orientation, target_pose, target_orientation, !usedAGV2)) {
+    // 	   return true;
+    // }
     
    }
    else
   {
     ROS_WARN("Service Not Ready");
+    return true;
   }
 
   incrementclient.call(incPart);
@@ -54,14 +70,14 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     ss << "order_0_kit_" << kit_num;
     std::string kit_type = ss.str();
 
-    if (!usedAGV2 && incPart.response.success) {
+    if (useAGV2 && incPart.response.success) {
 		submissionclient = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv2");
-		usedAGV2 = true;
+		useAGV2 = false;
 		kit_num += 1;
     }
-	else if (usedAGV2 && incPart.response.success){
+	else if (!useAGV2 && incPart.response.success){
 		submissionclient = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv1");
-		usedAGV2 = false;
+		useAGV2 = true;
 		kit_num += 1;
 	}
 

@@ -61,6 +61,21 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
       ROS_ERROR("[pick_and_place]: (lookup) %s", ex.what());
     }
 
+    try {
+	        tf_logical_to_world.waitForTransform("/world", "logical_camera_over_conveyor_frame", ros::Time(0), ros::Duration(50.0) );
+	     } catch (tf::TransformException &ex) {
+	        ROS_ERROR("[Order Manager]: (wait) %s", ex.what());
+	        ros::Duration(50.0).sleep();
+	  }
+
+    try {
+      tf_logical_to_world.lookupTransform("/world", "logical_camera_over_conveyor_frame", ros::Time(0), (_logical_to_world_ ));
+    }
+
+    catch (tf::TransformException &ex) {
+      ROS_ERROR("[Order Manager]: (lookup) %s", ex.what());
+    }
+
     // Get the location of the Logical Cameras
     // try {
     //     this->tf_cam_bin7_to_world.waitForTransform("/world", "/logical_camera_bin7_frame", ros::Time(0), ros::Duration(30.0) );
@@ -82,6 +97,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
   	next_part_service = nh_.advertiseService("next_pose_server", &OrderManager::get_next_pose, this);
     logical_cam_belt_sub = nh_.subscribe("/ariac/logical_camera_over_conveyor", 10, &OrderManager::logical_camera_callback, this);
     incrementservice = nh_.advertiseService("incrementPart", &OrderManager::incrementCompletedPart, this);
+    next_part_pose_service = nh_.advertiseService("part_scan_pose", &OrderManager::partScanPose, this);
   }
 
   void OrderManager::order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
@@ -98,13 +114,13 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
         for (int i=0;i< num_parts; i++){
           std::string type_part = kit.objects[i].type;
           ROS_INFO_STREAM(type_part);
-          ROS_INFO_STREAM(" Position x is : " << kit.objects[i].pose.position.x);
-          ROS_INFO_STREAM(" Position y is : " << kit.objects[i].pose.position.y);
-          ROS_INFO_STREAM(" Position z is : " << kit.objects[i].pose.position.z);
-          ROS_INFO_STREAM(" Quternion x is : " << kit.objects[i].pose.orientation.x);
-          ROS_INFO_STREAM(" Quternion y is : " << kit.objects[i].pose.orientation.y);
-          ROS_INFO_STREAM(" Quternion z is : " << kit.objects[i].pose.orientation.z);
-          ROS_INFO_STREAM(" Quternion w is : " << kit.objects[i].pose.orientation.w);
+          // ROS_INFO_STREAM(" Position x is : " << kit.objects[i].pose.position.x);
+          // ROS_INFO_STREAM(" Position y is : " << kit.objects[i].pose.position.y);
+          // ROS_INFO_STREAM(" Position z is : " << kit.objects[i].pose.position.z);
+          // ROS_INFO_STREAM(" Quternion x is : " << kit.objects[i].pose.orientation.x);
+          // ROS_INFO_STREAM(" Quternion y is : " << kit.objects[i].pose.orientation.y);
+          // ROS_INFO_STREAM(" Quternion z is : " << kit.objects[i].pose.orientation.z);
+          // ROS_INFO_STREAM(" Quternion w is : " << kit.objects[i].pose.orientation.w);
 
           if (currKitPoses.find(type_part) == currKitPoses.end()) {
              std::queue<geometry_msgs::Pose> tempPoses;
@@ -130,80 +146,54 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
  }
 
  void OrderManager::logical_camera_callback(const osrf_gear::LogicalCameraImage& image_msg){
- 	if (image_msg.models.size() == 1) { // Hack for now change size value to 2 later
- 		// Part Reached for Scanning
- 		int index = 0;
- 		// if (image_msg.models[0].pose.position.x < image_msg.models[1].pose.position.x) {
- 		// 	index = 0;
- 		// }
- 		// else {
- 		// 	index = 1;
- 		// }
+ 	int index = 0;
+ 	bool partForScanning = false;
+ 	if (!image_msg.models.empty()) { 
+ 		// Part might have reached for Scanning
+ 		if (image_msg.models.size() == 1 && image_msg.models[0].pose.position.x < 0.5){
+ 			partForScanning = true;
+ 		}
+ 		else if (image_msg.models.size() == 2) {
+ 		if (image_msg.models[0].pose.position.x > image_msg.models[1].pose.position.x) {
+ 			index = 1;
+ 		}
+ 			partForScanning = true;
+        }
 
- 		tf::Vector3 vect(image_msg.models[index].pose.position.x, image_msg.models[index].pose.position.y, image_msg.models[index].pose.position.z);
+        if (partForScanning) {
+        	tf::Vector3 vect(image_msg.models[index].pose.position.x, image_msg.models[index].pose.position.y, image_msg.models[index].pose.position.z);
+        	tf::Quaternion quat(image_msg.models[index].pose.orientation.x, image_msg.models[index].pose.orientation.y, image_msg.models[index].pose.orientation.z,image_msg.models[index].pose.orientation.w);
 
-	 	try {
-	        tf_logical_to_world.waitForTransform("/ee_link", "logical_camera_over_conveyor_frame", ros::Time(0), ros::Duration(1.0) );
-	     } catch (tf::TransformException &ex) {
-	        ROS_ERROR("[Order Manager]: (wait) %s", ex.what());
-	        ros::Duration(1.0).sleep();
-	    }
+        	tf::Transform part_to_logical(quat, vect);
+		    _part_scan_pose = _logical_to_world_ * part_to_logical;
+	  		
+		    // ROS_INFO_STREAM("The Part Position in world is(X): " << _part_scan_pose.getOrigin().getX());
+		    // ROS_INFO_STREAM("The Part Position in world is(Y): " << _part_scan_pose.getOrigin().getY());
+		    // ROS_INFO_STREAM("The Part Position in world is(Z): " << _part_scan_pose.getOrigin().getZ());
+        }
+ 		
+ 	}
+ 	if (partForScanning && image_msg.models.size() == 1)
+ 		return;
 
-	    try {
-	      tf_logical_to_world.lookupTransform("/ee_link", "logical_camera_over_conveyor_frame", ros::Time(0), (_error_in_eelink));
-	    }
-
-	    catch (tf::TransformException &ex) {
-	      ROS_ERROR("[Order Manager]: (lookup) %s", ex.what());
-	    }
-
-	    try {
-	        tf_logical_to_world.waitForTransform("/world", "logical_camera_over_conveyor_piston_rod_part_9_frame", ros::Time(0), ros::Duration(10.0) );
-	     } catch (tf::TransformException &ex) {
-	        ROS_ERROR("[Order Manager]: (wait) %s", ex.what());
-	        ros::Duration(1.0).sleep();
-	    }
-
-	    try {
-	      tf_logical_to_world.lookupTransform("/world", "logical_camera_over_conveyor_piston_rod_part_9_frame", ros::Time(0), (_ee_to_base_ ));
-	    }
-
-	    catch (tf::TransformException &ex) {
-	      ROS_ERROR("[Order Manager]: (lookup) %s", ex.what());
-	    }
-
-	    _part_scan_pose_e = _error_in_eelink * vect;
-	    _part_scan_pose = _ee_to_base_ * _part_scan_pose_e;
-
-	    tf::Quaternion quat = _ee_to_base_.getRotation().normalize();
-
-	    double roll, pitch, yaw;
-  		tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
-  		ROS_INFO_STREAM("Roll : " << roll);
-  		ROS_INFO_STREAM("Pitch : " << pitch);
-  		ROS_INFO_STREAM("yaw : " << yaw);
-  		
-	    ROS_INFO_STREAM("The Part Position error x is : " << _part_scan_pose_e.getX());
-	    ROS_INFO_STREAM("The Part Position error y is : " << _part_scan_pose_e.getY());
-	    ROS_INFO_STREAM("The Part Position error z is : " << _part_scan_pose_e.getZ());
-	    ROS_INFO_STREAM("The Part Position in world is(X): " << _ee_to_base_.getOrigin().getX());
-	    ROS_INFO_STREAM("The Part Position in world is(Y): " << _ee_to_base_.getOrigin().getY());
-	    ROS_INFO_STREAM("The Part Position in world is(Z): " << _ee_to_base_.getOrigin().getZ());
-	    return;
+ 	if (image_msg.models.size() == 2) {
+ 		if (index = 0)
+ 			index = 1;
+ 		else
+ 			index = 0;
  	}
 
     if (image_msg.models.empty() && partAdded) {
        partAccounted = false;
        partAdded = false;
     } else if (!image_msg.models.empty() && !partAccounted) {
-      ROS_INFO_STREAM(" The Position of part is : " << image_msg.models[0].pose.position.x);
+      ROS_INFO_STREAM(" The Position of part is : " << image_msg.models[index].pose.position.x);
       startTime = ros::Time::now().toSec();
       partAccounted = true;
-      start_pose_y = image_msg.models[0].pose.position.y;
-    } else if (!image_msg.models.empty() && partAccounted && abs(image_msg.models[0].pose.position.y) < 0.001 && !partAdded) {
-       // OS_WARN("Got the point near to the centre Point");
+      start_pose_y = image_msg.models[index].pose.position.y;
+    } else if (!image_msg.models.empty() && partAccounted && abs(image_msg.models[index].pose.position.y) < 0.001 && !partAdded) {
       endTime = ros::Time::now().toSec();
-      std::string obj_type_conveyor = image_msg.models[0].type;
+      std::string obj_type_conveyor = image_msg.models[index].type;
       _conveyorPartsTime[obj_type_conveyor].push_back(endTime);
       if (std::find(_conveyorPartTypes.begin(), _conveyorPartTypes.end(), obj_type_conveyor) == _conveyorPartTypes.end())
         _conveyorPartTypes.push_back(obj_type_conveyor);
@@ -214,7 +204,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
         // ROS_INFO_STREAM("The start pose is : " << image_msg.models[0].pose.position.y);
         // ROS_INFO_STREAM("The start Time is : " << startTime);
         // ROS_INFO_STREAM("The end Time is : " << endTime);
-        belt_velocity = std::abs(start_pose_y - image_msg.models[0].pose.position.y) / (endTime - startTime);
+        belt_velocity = std::abs(start_pose_y - image_msg.models[index].pose.position.y) / (endTime - startTime);
         ROS_INFO_STREAM(" The Belt Velocity is: " << belt_velocity);
         beltVeloctiyDetermined = true;
       }
@@ -232,6 +222,18 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
 
     return true;
   }
+
+ bool OrderManager::partScanPose(ariac_comp::request_part_scan_pose::Request& req, ariac_comp::request_part_scan_pose::Response& res) {
+	res.pose.translation.x = _part_scan_pose.getOrigin().getX();
+	res.pose.translation.y = _part_scan_pose.getOrigin().getY();
+	res.pose.translation.z = _part_scan_pose.getOrigin().getZ();
+
+	res.pose.rotation.x = _part_scan_pose.getRotation().x();
+	res.pose.rotation.y = _part_scan_pose.getRotation().y();
+	res.pose.rotation.z = _part_scan_pose.getRotation().z();
+	res.pose.rotation.w = _part_scan_pose.getRotation().w();
+	return true;
+ }
 
  bool OrderManager::get_next_pose(ariac_comp::request_next_pose::Request  &req, ariac_comp::request_next_pose::Response &res) {
     if (!_once_callback_done)
@@ -381,7 +383,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
     }
 
     else {
-      // res.noPartFound = true;
+      res.noPartFound = true;
       // ROS_INFO_STREAM(" Current Kit Size before Modified : " << _kits[_curr_kit].size());
       if (_kits[_curr_kit].size() > _curr_kit_index + 1)
         _curr_kit_index += 1;
@@ -389,8 +391,8 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
 
   	 geometry_msgs::Vector3 vec, vec2;
      geometry_msgs::Quaternion quat, quat2;
-     tf::Quaternion q = sourceToWorld.getRotation();
-     tf::Quaternion q2 = targetToWorld.getRotation();
+     tf::Quaternion q = sourceToWorld.getRotation().normalize();
+     tf::Quaternion q2 = targetToWorld.getRotation().normalize();
 
     vec.x = sourceToWorld.getOrigin().x();
   	vec.y = sourceToWorld.getOrigin().y();
@@ -441,10 +443,10 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
       _kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].pop();
     }
 
-    // if (isKitCompleted())
-    //     response.success = true;
-    //   else
-    //     response.success = false;
+    if (isKitCompleted())
+        response.success = true;
+      else
+        response.success = false;
 
     if (_kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].size() == 0)
         _curr_kit_index += 1;

@@ -19,6 +19,7 @@
 #include <tf/transform_listener.h>
 #include <geometry_msgs/Pose.h>
 #include "ariac_comp/request_next_pose.h"
+#include "ariac_comp/request_part_scan_pose.h"
 #include <cmath> 
 
 class OrderManager {
@@ -27,10 +28,10 @@ class OrderManager {
 		size_t erase_index;
 		tf::TransformListener tf_logical_to_world, tf_tray_to_world;
 		tf::StampedTransform _logical_to_world_, _ee_to_base_ ,_error_in_eelink, _tray_to_world_,_tray_to_world_2;
-		tf::Vector3 _part_scan_pose, _part_scan_pose_e;
+		tf::Transform _part_scan_pose;
 		ros::NodeHandle nh_;
 		ros::Subscriber logical_cam_belt_sub, orders_subscriber;
-		ros::ServiceServer next_part_service, incrementservice;
+		ros::ServiceServer next_part_service, incrementservice, next_part_pose_service;
 
 		std::map<int, std::map<std::string, std::queue<geometry_msgs::Pose> > > _kits; 
 		std::map<int, std::vector<std::string> > _kits_comp;
@@ -49,4 +50,5 @@ class OrderManager {
 		void logical_camera_callback(const osrf_gear::LogicalCameraImage& image_msg);
 		bool get_next_pose(ariac_comp::request_next_pose::Request  &req, ariac_comp::request_next_pose::Response &res);
 		bool incrementCompletedPart(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response);
+		bool partScanPose(ariac_comp::request_part_scan_pose::Request& req, ariac_comp::request_part_scan_pose::Response& res); 
 };

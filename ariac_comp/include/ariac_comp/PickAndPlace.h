@@ -107,7 +107,7 @@ public:
 	bool pickPlaceNextPartConveyor(geometry_msgs::Vector3 obj_pose, geometry_msgs::Vector3 target_pose, 
                                             geometry_msgs::Quaternion target_orientation, bool useAGV2);
 	bool place();
-	bool place(geometry_msgs::Vector3 vec, geometry_msgs::Quaternion quat);
+	bool place(geometry_msgs::Vector3 vec_s, geometry_msgs::Quaternion quat_s, geometry_msgs::Vector3 vec_t, geometry_msgs::Quaternion quat_t, bool useAGV2);
 	bool pickNextPart(geometry_msgs::Vector3 obj_pose);
 	bool pickNextPart(geometry_msgs::Vector3 obj_pose, geometry_msgs::Quaternion orientation);
 	bool pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::Quaternion obj_orientation, geometry_msgs::Vector3 target_pose, 
