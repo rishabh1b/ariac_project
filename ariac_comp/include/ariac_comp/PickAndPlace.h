@@ -13,7 +13,7 @@
 #include <osrf_gear/StorageUnit.h>
 
 struct Bin {
-	double resolution, orig_start_x, orig_start_y, start_x, start_y, start_z, z_offset_from_part;
+	double x_resolution, y_resolution, orig_start_x, orig_start_y, start_x, start_y, start_z, z_offset_from_part;
 	int curr_step;
 	bool is_res_set, is_offset_set;
 	std::string bin_name;
@@ -28,9 +28,9 @@ struct Bin {
 	}
 
 	bool checkOverflow() {
-		return ((curr_step + 1) > (0.6 - std::abs(resolution)) / std::abs(resolution) - 1);
+		return ((curr_step + 1) > (0.6 - std::abs(y_resolution)) / std::abs(y_resolution) - 1);
 	}
-	
+
 	Bin(std::string bin, double start_loc_x, double start_loc_y, double start_loc_z) {
 		orig_start_x = start_loc_x;
 		orig_start_y = start_loc_y;
@@ -43,14 +43,19 @@ struct Bin {
 	}
 	void incStep() {
 		curr_step += 1;
-		start_x = start_x - std::abs(resolution);
-		start_y = start_y + resolution;
-		if (curr_step > (0.6 - std::abs(resolution)) / std::abs(resolution) - 1) {
+		start_x = start_x - std::abs(x_resolution);
+		start_y = start_y + y_resolution;
+		if (curr_step > (0.6 - std::abs(y_resolution)) / std::abs(y_resolution) - 1) {
 			start_x = orig_start_x;
 			start_y = orig_start_y + 0.4;
-			resolution = -resolution;
+			y_resolution = -y_resolution;
 			curr_step = 0;
 		}
+	}
+
+	void setResolution(double res) {
+		x_resolution = res;
+		y_resolution = res;
 	}	
 };
 
@@ -79,7 +84,7 @@ private:
 
 	double test_x, test_y, test_z, conveyor_x, conveyor_y, conveyor_z;
 
-	std::vector<double> home_joint_values, base_link_end_values, base_link_end_values_2, return_home_joint_values, conveyor_joint_values;
+	std::vector<double> home_joint_values, base_link_end_values, base_link_end_values_2, return_home_joint_values, conveyor_joint_values, scan_joint_values;
 	int index;
 
 	bool _isPartAttached, _nowExecuting, _conveyorPartPicked;
@@ -93,6 +98,7 @@ private:
 	void setHome(); 
 	float getRandomValue();
 	void fillPartLocation(std::string mat_type);
+	void goToJointValue(double linear_joint);
 
 public:
 	PickAndPlace(ros::NodeHandle n, double* initialPositions, double _z_offset_from_part, double* part_location, float tray_length = 0.2);
@@ -109,4 +115,6 @@ public:
 	bool pickNextPartBin(std::string partType);
 
     void gripperStateCallback(const osrf_gear::VacuumGripperState::ConstPtr& msg);
+
+    void goToScanLocation();
 };

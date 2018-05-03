@@ -10,9 +10,9 @@
 <param name = "joint1" value = "3.1" />
 <param name = "joint2" value = "-1.5" /> <!-- -1.3-->
 <param name = "joint3" value = "2.4" />  <!-- 2.4 -->	
-<param name = "joint4" value = "3.75" />  <!-- 4.01 -->
-<param name = "joint5" value = "4.7" />   <!-- 4.7 -->
-<param name = "joint6" value = "-3.49" />
+<param name = "joint4" value = "3.3725" />  <!-- 3.75 -->
+<param name = "joint5" value = "4.7127" />   <!-- 4.7 -->
+<param name = "joint6" value = "-3.49" /> <!---6.28-->
 
 <param name = "z_offset" value = "0.02" />
 <!--param name = "x_test" value = "-0.233" />

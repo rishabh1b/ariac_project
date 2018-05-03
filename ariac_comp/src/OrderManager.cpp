@@ -29,6 +29,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
     this->avgManipSpeed = avgManipSpeed; //2.1 / 3.464;
     this->acceptable_delta = acceptable_delta;
     inPlaceRotConveyor = 0.2;
+    _once_callback_done = false;
 
     try {
         this->tf_tray_to_world.waitForTransform("/world", "logical_camera_over_agv2_kit_tray_2_frame", ros::Time(0), ros::Duration(100.0) );
@@ -77,6 +78,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
     // }
 
   	this->nh_ = n;
+  	orders_subscriber = nh_.subscribe("/ariac/orders", 10, &OrderManager::order_callback, this);
   	next_part_service = nh_.advertiseService("next_pose_server", &OrderManager::get_next_pose, this);
     logical_cam_belt_sub = nh_.subscribe("/ariac/logical_camera_over_conveyor", 10, &OrderManager::logical_camera_callback, this);
     incrementservice = nh_.advertiseService("incrementPart", &OrderManager::incrementCompletedPart, this);
@@ -96,6 +98,14 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
         for (int i=0;i< num_parts; i++){
           std::string type_part = kit.objects[i].type;
           ROS_INFO_STREAM(type_part);
+          ROS_INFO_STREAM(" Position x is : " << kit.objects[i].pose.position.x);
+          ROS_INFO_STREAM(" Position y is : " << kit.objects[i].pose.position.y);
+          ROS_INFO_STREAM(" Position z is : " << kit.objects[i].pose.position.z);
+          ROS_INFO_STREAM(" Quternion x is : " << kit.objects[i].pose.orientation.x);
+          ROS_INFO_STREAM(" Quternion y is : " << kit.objects[i].pose.orientation.y);
+          ROS_INFO_STREAM(" Quternion z is : " << kit.objects[i].pose.orientation.z);
+          ROS_INFO_STREAM(" Quternion w is : " << kit.objects[i].pose.orientation.w);
+
           if (currKitPoses.find(type_part) == currKitPoses.end()) {
              std::queue<geometry_msgs::Pose> tempPoses;
              tempPoses.push(kit.objects[i].pose);
@@ -120,6 +130,68 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
  }
 
  void OrderManager::logical_camera_callback(const osrf_gear::LogicalCameraImage& image_msg){
+ 	if (image_msg.models.size() == 1) { // Hack for now change size value to 2 later
+ 		// Part Reached for Scanning
+ 		int index = 0;
+ 		// if (image_msg.models[0].pose.position.x < image_msg.models[1].pose.position.x) {
+ 		// 	index = 0;
+ 		// }
+ 		// else {
+ 		// 	index = 1;
+ 		// }
+
+ 		tf::Vector3 vect(image_msg.models[index].pose.position.x, image_msg.models[index].pose.position.y, image_msg.models[index].pose.position.z);
+
+	 	try {
+	        tf_logical_to_world.waitForTransform("/ee_link", "logical_camera_over_conveyor_frame", ros::Time(0), ros::Duration(1.0) );
+	     } catch (tf::TransformException &ex) {
+	        ROS_ERROR("[Order Manager]: (wait) %s", ex.what());
+	        ros::Duration(1.0).sleep();
+	    }
+
+	    try {
+	      tf_logical_to_world.lookupTransform("/ee_link", "logical_camera_over_conveyor_frame", ros::Time(0), (_error_in_eelink));
+	    }
+
+	    catch (tf::TransformException &ex) {
+	      ROS_ERROR("[Order Manager]: (lookup) %s", ex.what());
+	    }
+
+	    try {
+	        tf_logical_to_world.waitForTransform("/world", "logical_camera_over_conveyor_piston_rod_part_9_frame", ros::Time(0), ros::Duration(10.0) );
+	     } catch (tf::TransformException &ex) {
+	        ROS_ERROR("[Order Manager]: (wait) %s", ex.what());
+	        ros::Duration(1.0).sleep();
+	    }
+
+	    try {
+	      tf_logical_to_world.lookupTransform("/world", "logical_camera_over_conveyor_piston_rod_part_9_frame", ros::Time(0), (_ee_to_base_ ));
+	    }
+
+	    catch (tf::TransformException &ex) {
+	      ROS_ERROR("[Order Manager]: (lookup) %s", ex.what());
+	    }
+
+	    _part_scan_pose_e = _error_in_eelink * vect;
+	    _part_scan_pose = _ee_to_base_ * _part_scan_pose_e;
+
+	    tf::Quaternion quat = _ee_to_base_.getRotation().normalize();
+
+	    double roll, pitch, yaw;
+  		tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+  		ROS_INFO_STREAM("Roll : " << roll);
+  		ROS_INFO_STREAM("Pitch : " << pitch);
+  		ROS_INFO_STREAM("yaw : " << yaw);
+  		
+	    ROS_INFO_STREAM("The Part Position error x is : " << _part_scan_pose_e.getX());
+	    ROS_INFO_STREAM("The Part Position error y is : " << _part_scan_pose_e.getY());
+	    ROS_INFO_STREAM("The Part Position error z is : " << _part_scan_pose_e.getZ());
+	    ROS_INFO_STREAM("The Part Position in world is(X): " << _ee_to_base_.getOrigin().getX());
+	    ROS_INFO_STREAM("The Part Position in world is(Y): " << _ee_to_base_.getOrigin().getY());
+	    ROS_INFO_STREAM("The Part Position in world is(Z): " << _ee_to_base_.getOrigin().getZ());
+	    return;
+ 	}
+
     if (image_msg.models.empty() && partAdded) {
        partAccounted = false;
        partAdded = false;
