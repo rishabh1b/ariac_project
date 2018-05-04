@@ -10,6 +10,7 @@ OrderFullfiller::OrderFullfiller(ros::NodeHandle n) {
 	 kit_num = 0;
 	 useAGV2 = false;
 	 highPriorityOrderReceived = false;
+	 conveyorPickingPositionAttained = false;
 }
 
 bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
@@ -18,8 +19,15 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
 	if (nextPartclient.call(pointsrv))
    {
 
-   	if (pointsrv.response.noPartFound)
-   		return false;
+   	if (pointsrv.response.highPriority && !highPriorityOrderReceived){
+   		highPriorityOrderReceived = true; 
+   		useAGV2 = !useAGV2;
+   	}
+
+   	if (pointsrv.response.noPartFound ) {
+   		return true;
+   	}	
+   		
    	
    	if (pointsrv.response.order_completed)
    		return false;
@@ -29,30 +37,44 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     target_position = pointsrv.response.tgtposition;
     obj_orientation = pointsrv.response.orientation;
     target_orientation = pointsrv.response.tgtorientation;
-
-    // Needs Modification - Need to decouple 
+    bool partAvailable = true;
+ 
     if (pointsrv.response.conveyorPart) {
-    	if (!pickPlace.pickPlaceNextPartConveyor(obj_pose, target_position, target_orientation, useAGV2))
+    	if (!pickPlace.pickNextPartConveyor(obj_pose, target_position, target_orientation, partType, useAGV2))
     		return true;
-    }
 
+    }
     else {
     	bool partPicked = false;
+
     	while (!partPicked) {
-    		if (!pickPlace.pickNextPartBin(partType))
+    		if (!pickPlace.pickNextPartBin(partType, partAvailable) && partAvailable)
     			continue;
-    		pickPlace.goToScanLocation();
+    		else
+    			break;
+    		
     		// if (!pickPlace.goToScanLocation())
     		// 	continue;
     		partPicked = true;
     	}
-
-    	if (partPoseclient.call(scanPose)) {
-    		if (!pickPlace.place(scanPose.response.pose.translation, scanPose.response.pose.rotation, target_position, target_orientation, useAGV2))
-    			return true;
-    	}
-
     }
+
+    if (!partAvailable  && !conveyorPickingPositionAttained) {
+		// Go to Conveyor Position and wait
+		pickPlace.attainConveyorPick();
+		conveyorPickingPositionAttained = true;
+		return true;
+	}
+
+    if (pickPlace.isPartAttached()) {
+      pickPlace.goToScanLocation(pointsrv.response.conveyorPart);
+      if (partPoseclient.call(scanPose)) {
+      	if (!pickPlace.place(scanPose.response.pose.translation, scanPose.response.pose.rotation, target_position, target_orientation, useAGV2))
+      		return true;
+      	}
+    }
+    else
+      return true;
     // else if (!pickPlace.pickAndPlace(obj_pose, obj_orientation, target_pose, target_orientation, !usedAGV2)) {
     // 	   return true;
     // }
@@ -64,7 +86,7 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     return true;
   }
 
-  incrementclient.call(incPart);
+    incrementclient.call(incPart);
 
     std::stringstream ss;
     ss << "order_0_kit_" << kit_num;

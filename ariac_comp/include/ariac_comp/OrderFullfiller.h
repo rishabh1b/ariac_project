@@ -8,7 +8,7 @@
 class OrderFullfiller {
 private:
 	ros::ServiceClient nextPartclient, incrementclient, partPoseclient;
-	bool _once_callback_done;
+	bool _once_callback_done, conveyorPickingPositionAttained;
 	tf::TransformListener tf_logical_to_world;
 	tf::StampedTransform _logical_to_world_;
 	ros::Subscriber orders_subscriber;

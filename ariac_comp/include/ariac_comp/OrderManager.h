@@ -21,10 +21,11 @@
 #include "ariac_comp/request_next_pose.h"
 #include "ariac_comp/request_part_scan_pose.h"
 #include <cmath> 
+#include "FactoryFloor.h"
 
 class OrderManager {
 	private:
-		int _curr_kit, _curr_kit_index;
+		int _curr_kit, _curr_kit_index, _old_kit_index, _old_kit;
 		size_t erase_index;
 		tf::TransformListener tf_logical_to_world, tf_tray_to_world;
 		tf::StampedTransform _logical_to_world_, _ee_to_base_ ,_error_in_eelink, _tray_to_world_,_tray_to_world_2;
@@ -33,16 +34,19 @@ class OrderManager {
 		ros::Subscriber logical_cam_belt_sub, orders_subscriber;
 		ros::ServiceServer next_part_service, incrementservice, next_part_pose_service;
 
-		std::map<int, std::map<std::string, std::queue<geometry_msgs::Pose> > > _kits; 
-		std::map<int, std::vector<std::string> > _kits_comp;
+		std::map<int, std::map<std::string, std::queue<geometry_msgs::Pose> > > _kits, _old_kits; 
+		std::map<int, std::vector<std::string> > _kits_comp, _old_kits_comp;
 		std::map<std::string, std::vector<double> > _conveyorPartsTime;
 		std::vector<std::string> _conveyorPartTypes;
 
 		bool isKitCompleted();
 
 		std::string _obj_type_conveyor, _last_part_type;
-		bool conveyorPartDetected, beltVeloctiyDetermined, partAccounted, partAdded, _once_callback_done;
-		double belt_velocity, startTime, endTime, start_pose_y, avgManipSpeed, inPlaceRotConveyor, acceptable_delta;
+		bool conveyorPartDetected, beltVeloctiyDetermined, partAccounted, partAdded, _once_callback_done, changedPriority, serveHighPriority;
+		double belt_velocity, startTime, endTime, start_pose_y, avgManipSpeed, inPlaceRotConveyor, acceptable_delta, start_t;
+	    void getTargetPose(std::string partType, tf::Transform& targetToWorld);
+
+	    std::map<std::string, std::string> partLocation;
 
 	public:
 		OrderManager(ros::NodeHandle n, double avgManipSpeed = 0.606, double acceptable_delta = 2);

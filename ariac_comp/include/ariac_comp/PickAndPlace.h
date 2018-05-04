@@ -8,56 +8,10 @@
 #include <tf/transform_listener.h>
 #include <geometry_msgs/Vector3.h>
 #include <osrf_gear/VacuumGripperControl.h>
-#include <osrf_gear/GetMaterialLocations.h>
+// #include <osrf_gear/GetMaterialLocations.h>
 #include <osrf_gear/VacuumGripperState.h>
-#include <osrf_gear/StorageUnit.h>
-
-struct Bin {
-	double x_resolution, y_resolution, orig_start_x, orig_start_y, start_x, start_y, start_z, z_offset_from_part;
-	int curr_step;
-	bool is_res_set, is_offset_set;
-	std::string bin_name;
-
-	Bin() {
-		start_x = 0;
-	    start_y = 0;
-		start_z = 0.72;
-		bin_name = "bin";
-		curr_step = 0;
-		is_res_set = false;
-	}
-
-	bool checkOverflow() {
-		return ((curr_step + 1) > (0.6 - std::abs(y_resolution)) / std::abs(y_resolution) - 1);
-	}
-
-	Bin(std::string bin, double start_loc_x, double start_loc_y, double start_loc_z) {
-		orig_start_x = start_loc_x;
-		orig_start_y = start_loc_y;
-		start_x = start_loc_x;
-		start_y = start_loc_y;
-		start_z = start_loc_z;
-		bin_name = bin;
-		curr_step = 0;
-		is_res_set = false;
-	}
-	void incStep() {
-		curr_step += 1;
-		start_x = start_x - std::abs(x_resolution);
-		start_y = start_y + y_resolution;
-		if (curr_step > (0.6 - std::abs(y_resolution)) / std::abs(y_resolution) - 1) {
-			start_x = orig_start_x;
-			start_y = orig_start_y + 0.4;
-			y_resolution = -y_resolution;
-			curr_step = 0;
-		}
-	}
-
-	void setResolution(double res) {
-		x_resolution = res;
-		y_resolution = res;
-	}	
-};
+//#include <osrf_gear/StorageUnit.h>
+#include "FactoryFloor.h"
 
 class PickAndPlace {
 private:
@@ -67,7 +21,7 @@ private:
 	geometry_msgs::Vector3 _home_position;
 	geometry_msgs::Point _home_pt;
 	osrf_gear::VacuumGripperControl gripper_srv;
-	osrf_gear::GetMaterialLocations mat_location_srv;
+	// osrf_gear::GetMaterialLocations mat_location_srv;
 	ros::ServiceClient gripper_client, mat_location_client;
 	ros::Subscriber gripperStateSubscriber;
 	double _z_offset_from_part;
@@ -77,6 +31,7 @@ private:
 	tf::Quaternion _home_quat;
 
 	tf::TransformListener tf_tray_to_world;
+	tf::Vector3 _offset_vect;
 
 	moveit::planning_interface::MoveGroup::Plan my_plan;
 
@@ -86,18 +41,18 @@ private:
 
 	std::vector<double> home_joint_values, base_link_end_values, base_link_end_values_2, return_home_joint_values, conveyor_joint_values, scan_joint_values;
 	int index;
-
+	std::string _curr_part_type;
 	bool _isPartAttached, _nowExecuting, _conveyorPartPicked;
 	
 	std::map<std::string, std::string> partLocation;
 	std::map<std::string, Bin> binMap;
+	std::map<std::string, double> conveyorPickOffset;
 
 	void initialSetup();
 	void goHome();
 	void goHome2();
 	void setHome(); 
-	float getRandomValue();
-	void fillPartLocation(std::string mat_type);
+	// void fillPartLocation(std::string mat_type);
 	void goToJointValue(double linear_joint);
 
 public:
@@ -112,9 +67,16 @@ public:
 	bool pickNextPart(geometry_msgs::Vector3 obj_pose, geometry_msgs::Quaternion orientation);
 	bool pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::Quaternion obj_orientation, geometry_msgs::Vector3 target_pose, 
                       geometry_msgs::Quaternion target_orientation, bool useAGV2 = true);
-	bool pickNextPartBin(std::string partType);
+	bool pickNextPartBin(std::string partType, bool& partAvailable);
+
+	bool pickNextPartConveyor(geometry_msgs::Vector3 obj_pose, geometry_msgs::Vector3 target_pose, geometry_msgs::Quaternion target_orientation,
+                                        std::string partType, bool useAGV2);
 
     void gripperStateCallback(const osrf_gear::VacuumGripperState::ConstPtr& msg);
 
-    void goToScanLocation();
+    void goToScanLocation(bool conveyorPicking = false);
+
+    void attainConveyorPick();
+
+    bool isPartAttached();
 };

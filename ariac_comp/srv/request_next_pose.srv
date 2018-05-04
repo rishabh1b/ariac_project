@@ -8,3 +8,4 @@ bool order_completed
 bool conveyorPart
 bool noPartFound
 string partType
+bool highPriority

@@ -28,8 +28,9 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
     partAdded = false;
     this->avgManipSpeed = avgManipSpeed; //2.1 / 3.464;
     this->acceptable_delta = acceptable_delta;
-    inPlaceRotConveyor = 0.2;
+    inPlaceRotConveyor = 0;
     _once_callback_done = false;
+    serveHighPriority = false;
 
     try {
         this->tf_tray_to_world.waitForTransform("/world", "logical_camera_over_agv2_kit_tray_2_frame", ros::Time(0), ros::Duration(100.0) );
@@ -76,34 +77,37 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
       ROS_ERROR("[Order Manager]: (lookup) %s", ex.what());
     }
 
-    // Get the location of the Logical Cameras
-    // try {
-    //     this->tf_cam_bin7_to_world.waitForTransform("/world", "/logical_camera_bin7_frame", ros::Time(0), ros::Duration(30.0) );
-    // } catch (tf::TransformException &ex) {
-    //     ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
-    //     ros::Duration(10.0).sleep();
-    // }
-
-    // try {
-    //   this->tf_cam_bin7_to_world.lookupTransform("/world", "/logical_camera_bin7_frame", ros::Time(0), (this->_cam_bin7_to_world_));
-    // }
-
-    // catch (tf::TransformException &ex) {
-    //   ROS_ERROR("[pick_and_place]: (lookup) %s", ex.what());
-    // }
-
   	this->nh_ = n;
   	orders_subscriber = nh_.subscribe("/ariac/orders", 10, &OrderManager::order_callback, this);
   	next_part_service = nh_.advertiseService("next_pose_server", &OrderManager::get_next_pose, this);
     logical_cam_belt_sub = nh_.subscribe("/ariac/logical_camera_over_conveyor", 10, &OrderManager::logical_camera_callback, this);
     incrementservice = nh_.advertiseService("incrementPart", &OrderManager::incrementCompletedPart, this);
     next_part_pose_service = nh_.advertiseService("part_scan_pose", &OrderManager::partScanPose, this);
+
+    // global timer
+    start_t = ros::Time::now().toSec();
+
+    // Get Part Locations
+    FactoryFloor ff(nh_);
+    partLocation = ff.getPartLocations();
   }
 
   void OrderManager::order_callback(const osrf_gear::Order::ConstPtr & order_msg) {
       ROS_WARN("New Order Received!");
-      if (_once_callback_done)
-      	return;
+      if (_once_callback_done) {
+      	 _old_kits = _kits;
+        _old_kits_comp = _kits_comp;
+        _old_kit_index = _curr_kit_index;
+        _old_kit = _curr_kit;
+
+       _kits.clear();
+       _kits_comp.clear();
+
+       // std_srvs::Empty highPriority;
+       // highPriorityOmClient.call(highPriority);
+       serveHighPriority = true;
+       changedPriority = true;
+      }
 
       for (int j = 0; j < order_msg->kits.size(); j++) {
         osrf_gear::Kit kit= order_msg->kits[j];
@@ -199,11 +203,10 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
         _conveyorPartTypes.push_back(obj_type_conveyor);
 
       partAdded = true;
+      ROS_WARN(" New Part Added ");
+      ROS_INFO_STREAM(" The Part Type is " << obj_type_conveyor);
+
       if (!beltVeloctiyDetermined) {
-        // ROS_INFO_STREAM("The start pose is : " << start_pose_y);
-        // ROS_INFO_STREAM("The start pose is : " << image_msg.models[0].pose.position.y);
-        // ROS_INFO_STREAM("The start Time is : " << startTime);
-        // ROS_INFO_STREAM("The end Time is : " << endTime);
         belt_velocity = std::abs(start_pose_y - image_msg.models[index].pose.position.y) / (endTime - startTime);
         ROS_INFO_STREAM(" The Belt Velocity is: " << belt_velocity);
         beltVeloctiyDetermined = true;
@@ -235,9 +238,28 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
 	return true;
  }
 
+ void OrderManager::getTargetPose(std::string partType, tf::Transform& targetToWorld) {
+	geometry_msgs::Pose pose = _kits[_curr_kit][partType].front();
+    geometry_msgs::Quaternion q = pose.orientation;
+    geometry_msgs::Point p = pose.position;
+
+    tf::Quaternion quatTarget(q.x, q.y, q.z, q.w);
+    tf::Vector3 vect(p.x, p.y, p.z);
+
+    tf::Transform partToTray(quatTarget, vect);
+
+    if ((_curr_kit) % 2 == 0 && !serveHighPriority)
+      targetToWorld = _tray_to_world_2 * partToTray;
+    else
+      targetToWorld = _tray_to_world_* partToTray;
+ }
+
  bool OrderManager::get_next_pose(ariac_comp::request_next_pose::Request  &req, ariac_comp::request_next_pose::Response &res) {
-    if (!_once_callback_done)
+    if (!_once_callback_done || (ros::Time::now().toSec() - start_t) < 5)
         return false;
+
+    if (changedPriority)
+		changedPriority = false;
 
   	if (isKitCompleted()) {
         _curr_kit += 1;
@@ -255,18 +277,27 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
       res.noPartFound = false;
       conveyorPartDetected = false;
 
+      bool feasibleConveyorPartFound = false;
       if (_conveyorPartsTime.size() > 0) {
-        bool feasibleConveyorPartFound = false;
         double x = 0;
         std::list<int> erase_indices;
         for (size_t j = 0; j < _conveyorPartTypes.size() && !feasibleConveyorPartFound; j++) {
           if (_kits[_curr_kit].find(_conveyorPartTypes[j]) != _kits[_curr_kit].end() && _kits[_curr_kit][_conveyorPartTypes[j]].size() == 0)
               continue;
+
+          if (partLocation.find(_conveyorPartTypes[j]) != partLocation.end())
+              continue;
+
           std::vector<double> tempTimes = _conveyorPartsTime[_conveyorPartTypes[j]];
           for (size_t i = 0; i < tempTimes.size(); i++){
-            double delta_x = belt_velocity * (inPlaceRotConveyor + (ros::Time::now().toSec() - tempTimes[i]));
-            ROS_INFO_STREAM("delta_x: " << delta_x);
-            if (delta_x > acceptable_delta){
+            double dist_travelled_part, delta_x;
+            if ((_curr_kit) % 2 == 0 && !serveHighPriority) 
+            	dist_travelled_part	= belt_velocity * (inPlaceRotConveyor + (ros::Time::now().toSec() - tempTimes[i]));
+            else 
+            	dist_travelled_part = 2.1 - belt_velocity * (inPlaceRotConveyor + (ros::Time::now().toSec() - tempTimes[i]));
+
+            ROS_INFO_STREAM("Distance Travelled By Part: " << dist_travelled_part);
+            if (std::abs(dist_travelled_part) > acceptable_delta){
               erase_indices.push_back(i);
               continue;
             }
@@ -274,10 +305,11 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
               feasibleConveyorPartFound = true;
               erase_index = i;
               // x = (4.5 - delta_x) / (1 + belt_velocity / avgManipSpeed);
-              x = (delta_x) / (1 + belt_velocity / avgManipSpeed);
-              x = 2 - x;
-              ROS_INFO_STREAM(" Picking Location on Conveyor : " << x);
+              // x = (delta_x) / (1 + belt_velocity / avgManipSpeed);
+              delta_x = (dist_travelled_part) / (avgManipSpeed / belt_velocity - 1);
               _obj_type_conveyor = _conveyorPartTypes[j];
+              res.partType = _obj_type_conveyor;
+              x = dist_travelled_part + delta_x;
               break;
             }
           }
@@ -288,124 +320,81 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
           // }
         }
 
-        ROS_WARN("Conveyor Part is going to be picked");
-        ROS_INFO_STREAM("Part type: " << _obj_type_conveyor);
+        if (feasibleConveyorPartFound) {
+	        ROS_WARN("Conveyor Part is going to be picked");
+	        ROS_INFO_STREAM("Part type: " << _obj_type_conveyor);
 
-        // if (!feasibleConveyorPartFound)
-        //   res.noPartFound = true;
+	        getTargetPose(_obj_type_conveyor, targetToWorld);
 
-        geometry_msgs::Pose pose = _kits[_curr_kit][_obj_type_conveyor].front();
-        geometry_msgs::Quaternion q = pose.orientation;
-        geometry_msgs::Point p = pose.position;
+	         // TODO : Add this parameter in the launch file
+	         double conveyor_x = 1.21;
+	         double conveyor_y = x;
+	         double conveyor_z = 0.93;
 
-        tf::Quaternion quatTarget(q.x, q.y, q.z, q.w);
-        tf::Vector3 vect(p.x, p.y, p.z);
+	         tf::Vector3 vec(conveyor_x, conveyor_y, conveyor_z);
 
-        tf::Transform partToTray(quatTarget, vect);
-
-        if ((_curr_kit) % 2 == 0)
-          targetToWorld = _tray_to_world_2 * partToTray;
-        else
-          targetToWorld = _tray_to_world_* partToTray;
-
-
-         // TODO : Add this parameter in the launch file
-         double conveyor_x = 1.21;
-         double conveyor_y = x;
-         double conveyor_z = 0.93;
-
-         tf::Vector3 vec(conveyor_x, conveyor_y, conveyor_z);
-
-         sourceToWorld.setOrigin(vec);
-         conveyorPartDetected = true;
+	         sourceToWorld.setOrigin(vec);
+	         conveyorPartDetected = true;
+        }
       }
 
-  	 else if (_kits_comp[_curr_kit].at(_curr_kit_index).compare("piston_rod_part") == 0 && _kits[_curr_kit]["piston_rod_part"].size() > 0) {
-        // geometry_msgs::Pose pose = _targetPosesPiston.top();
-        geometry_msgs::Pose pose = _kits[_curr_kit]["piston_rod_part"].front();
-        geometry_msgs::Quaternion q = pose.orientation;
-        geometry_msgs::Point p = pose.position;
+      if (!feasibleConveyorPartFound && partLocation.find(_kits_comp[_curr_kit].at(_curr_kit_index)) != partLocation.end()) {
 
-        tf::Quaternion quatTarget(q.x, q.y, q.z, q.w);
-        tf::Vector3 vect(p.x, p.y, p.z);
+	      if (_kits_comp[_curr_kit].at(_curr_kit_index).compare("piston_rod_part") == 0 && _kits[_curr_kit]["piston_rod_part"].size() > 0) {
+	  	 	getTargetPose("piston_rod_part", targetToWorld);
+		   _last_part_type = "piston_rod_part";
+		   res.partType = "piston_rod_part";
 
-        tf::Transform partToTray(quatTarget, vect);
+	  	   }
 
-        if ((_curr_kit) % 2 == 0)
-          targetToWorld = _tray_to_world_2 * partToTray;
-        else
-          targetToWorld = _tray_to_world_* partToTray;
+	     else if(_kits_comp[_curr_kit].at(_curr_kit_index).compare("gear_part") == 0 && _kits[_curr_kit]["gear_part"].size() > 0) {
+	     	 getTargetPose("gear_part", targetToWorld);
+	      	_last_part_type = "gear_part";
+	      	res.partType = "gear_part";
 
-       _last_part_type = "piston_rod_part";
-       res.partType = "piston_rod_part";
+	     }
 
-  	 }
+	    else if(_kits_comp[_curr_kit].at(_curr_kit_index).compare("disk_part") == 0 && _kits[_curr_kit]["disk_part"].size() > 0) {
+	    	 getTargetPose("disk_part", targetToWorld);
+	      	_last_part_type = "disk_part";
+	      	res.partType = "disk_part";
+	      	
+	    }
 
-     else if(_kits_comp[_curr_kit].at(_curr_kit_index).compare("gear_part") == 0 && _kits[_curr_kit]["gear_part"].size() > 0) {
-        // geometry_msgs::Pose pose = _targetPosesGear.top();
-        geometry_msgs::Pose pose =  _kits[_curr_kit]["gear_part"].front();
-        geometry_msgs::Quaternion q = pose.orientation;
-        geometry_msgs::Point p = pose.position;
+	    else if(_kits_comp[_curr_kit].at(_curr_kit_index).compare("gasket_part") == 0 && _kits[_curr_kit]["gasket_part"].size() > 0) {
+	    	 getTargetPose("gasket_part", targetToWorld);
+	      	_last_part_type = "gasket_part";
+	      	res.partType = "gasket_part";
+	    }
 
-        tf::Quaternion quatTarget(q.x, q.y, q.z, q.w);
-        tf::Vector3 vect(p.x, p.y, p.z);
-
-        tf::Transform partToTray(quatTarget, vect);
-
-        if ((_curr_kit) % 2 == 0)
-          targetToWorld = _tray_to_world_2 * partToTray;
-        else
-          targetToWorld = _tray_to_world_ * partToTray;
-
-      	_last_part_type = "gear_part";
-      	res.partType = "gear_part";
-
-     }
-
-    else if(_kits_comp[_curr_kit].at(_curr_kit_index).compare("disk_part") == 0 && _kits[_curr_kit]["disk_part"].size() > 0) {
-        geometry_msgs::Pose pose =  _kits[_curr_kit]["disk_part"].front();
-        geometry_msgs::Quaternion q = pose.orientation;
-        geometry_msgs::Point p = pose.position;
-
-        tf::Quaternion quatTarget(q.x, q.y, q.z, q.w);
-        tf::Vector3 vect(p.x, p.y, p.z);
-
-        tf::Transform partToTray(quatTarget, vect);
-
-        if ((_curr_kit) % 2 == 0)
-          targetToWorld = _tray_to_world_2 * partToTray;
-        else
-          targetToWorld = _tray_to_world_ * partToTray;
-
-      	_last_part_type = "disk_part";
-      	res.partType = "disk_part";
-      	
-    }
-
-    else {
-      res.noPartFound = true;
-      // ROS_INFO_STREAM(" Current Kit Size before Modified : " << _kits[_curr_kit].size());
-      if (_kits[_curr_kit].size() > _curr_kit_index + 1)
-        _curr_kit_index += 1;
-    }
+	    else {
+	      res.noPartFound = true;
+	      // ROS_INFO_STREAM(" Current Kit Size before Modified : " << _kits[_curr_kit].size());
+	      if (_kits[_curr_kit].size() > _curr_kit_index + 1)
+	        _curr_kit_index += 1;
+	    }
+      }
+      else {
+      	ROS_WARN(" Missed a Part!");   	
+      }
 
   	 geometry_msgs::Vector3 vec, vec2;
      geometry_msgs::Quaternion quat, quat2;
      tf::Quaternion q = sourceToWorld.getRotation().normalize();
      tf::Quaternion q2 = targetToWorld.getRotation().normalize();
 
-    vec.x = sourceToWorld.getOrigin().x();
-  	vec.y = sourceToWorld.getOrigin().y();
-  	vec.z = sourceToWorld.getOrigin().z();
+     vec.x = sourceToWorld.getOrigin().x();
+  	 vec.y = sourceToWorld.getOrigin().y();
+  	 vec.z = sourceToWorld.getOrigin().z();
 
      vec2.x = targetToWorld.getOrigin().x();
      vec2.y = targetToWorld.getOrigin().y();
      vec2.z = targetToWorld.getOrigin().z();
 
 
-      ROS_INFO_STREAM("part drop location x: "<< vec2.x);
-      ROS_INFO_STREAM("part drop location y: "<< vec2.y);
-      ROS_INFO_STREAM("part drop location z: "<< vec2.z);
+      // ROS_INFO_STREAM("part drop location x: "<< vec2.x);
+      // ROS_INFO_STREAM("part drop location y: "<< vec2.y);
+      // ROS_INFO_STREAM("part drop location z: "<< vec2.z);
 
       quat.x = q.x();
       quat.y = q.y();
@@ -429,6 +418,11 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
       else
         res.conveyorPart = true;
 
+      if (serveHighPriority)
+      	res.highPriority = true;
+      else
+      	res.highPriority = false;
+
   	return true;
   }
 
@@ -440,13 +434,29 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
         _conveyorPartsTime[_obj_type_conveyor].erase(_conveyorPartsTime[_obj_type_conveyor].begin() + erase_index);
     }
     else {
-      _kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].pop();
+      if (changedPriority) {
+          _old_kits[_old_kit][_old_kits_comp[_old_kit].at(_old_kit_index)].pop();
+          changedPriority = false;
+        }
+        else {
+          _kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].pop();
+        }
     }
 
-    if (isKitCompleted())
+    if (isKitCompleted()) { //&& ros::Time::now().toSec() - start_t > 30
         response.success = true;
-      else
+    	if (_old_kits.size() > 0) {
+           _kits = _old_kits;
+           _kits_comp = _old_kits_comp;
+           _curr_kit_index = _old_kit_index;
+           _curr_kit = _old_kit;
+           serveHighPriority = false;
+           _old_kits.clear();
+           _old_kits_comp.clear();
+       }
+      } else {
         response.success = false;
+    }
 
     if (_kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].size() == 0)
         _curr_kit_index += 1;
