@@ -26,16 +26,16 @@ sensors:
   #  pose:
   #    xyz: [-0.66, 0.22, 1.36]
   #    rpy: ['pi/2', 1.32, 0]
-  logical_camera_over_agv1:
-    type: logical_camera
-    pose:
-      xyz: [0.3, 3.15, 1.5]
-      rpy: [0, 'pi/2', 0]
-  logical_camera_over_agv2:
-    type: logical_camera
-    pose:
-      xyz: [0.3, -3.15, 1.5]
-      rpy: [0, 'pi/2', 0]
+  #logical_camera_over_agv1:
+  #  type: logical_camera
+  #  pose:
+  #    xyz: [0.3, 3.15, 1.5]
+  #    rpy: [0, 'pi/2', 0]
+  # logical_camera_over_agv2:
+  #  type: logical_camera
+  #  pose:
+  #    xyz: [0.3, -3.15, 1.5]
+  #    rpy: [0, 'pi/2', 0]
   logical_camera_over_conveyor:
     type: logical_camera
     pose:

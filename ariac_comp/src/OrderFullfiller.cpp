@@ -1,5 +1,11 @@
 #include "ariac_comp/OrderFullfiller.h"
 
+/**
+ * @brief OrderFullfiller Class Constructor
+ * @details Class is a bridge between OrderManager and PickAndPlace CLass
+ * 
+ * @param n [ROS Node Handle]
+ */
 OrderFullfiller::OrderFullfiller(ros::NodeHandle n) {
      this->n = n;
      partPoseclient = n.serviceClient<ariac_comp::request_part_scan_pose>("part_scan_pose");
@@ -13,6 +19,13 @@ OrderFullfiller::OrderFullfiller(ros::NodeHandle n) {
 	 conveyorPickingPositionAttained = false;
 }
 
+/**
+ * @brief manage function manages the Order Fullfillment Process
+ * @details manage function uses pickPlace object and calls services on OrderManager
+ * 
+ * @param pickPlace Object of class PickAndPlace
+ * @return flag indicating whether the order fullfillment is completed
+ */
 bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
 	// bool conveyorPartAvailable;
 
@@ -75,9 +88,6 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     }
     else
       return true;
-    // else if (!pickPlace.pickAndPlace(obj_pose, obj_orientation, target_pose, target_orientation, !usedAGV2)) {
-    // 	   return true;
-    // }
     
    }
    else
@@ -110,6 +120,11 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     return true;
 }
 
+/**
+ * @brief This node runs from here
+ * @details Takes parameters from the launch file
+ * 
+ */
 int main(int argc, char* argv[]) {
 	ros::init(argc, argv, "floor_manager");
 	ros::NodeHandle n;
@@ -132,8 +147,6 @@ int main(int argc, char* argv[]) {
 	private_node_handle.getParam("tray_length", tray_length);
 
 	double part_location[3] = {x_test, y_test, z_test};
-
-    // ROS_INFO_STREAM("Initial Joint 6: " << initialjoints[6] << "\n");
 
 	PickAndPlace pickPlace(n, initialjoints, z_offset_from_part, part_location, tray_length);
 

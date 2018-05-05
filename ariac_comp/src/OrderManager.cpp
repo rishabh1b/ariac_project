@@ -32,35 +32,67 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
     _once_callback_done = false;
     serveHighPriority = false;
 
-    try {
-        this->tf_tray_to_world.waitForTransform("/world", "logical_camera_over_agv2_kit_tray_2_frame", ros::Time(0), ros::Duration(100.0) );
-    } catch (tf::TransformException &ex) {
-        ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
-        ros::Duration(10.0).sleep();
-    }
+
+    // try {
+    //     this->tf_tray_to_world.waitForTransform("/world", "logical_camera_over_agv2_kit_tray_2_frame", ros::Time(0), ros::Duration(100.0) );
+    // } catch (tf::TransformException &ex) {
+    //     ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
+    //     ros::Duration(10.0).sleep();
+    // }
+
+    // try {
+    //   this->tf_tray_to_world.lookupTransform("/world", "logical_camera_over_agv2_kit_tray_2_frame", ros::Time(0), (this->_tray_to_world_));
+    // }
+
+    // catch (tf::TransformException &ex) {
+    //   ROS_ERROR("[pick_and_place]: (lookup) %s", ex.what());
+    // }
+
+   // try {
+    //     this->tf_tray_to_world.waitForTransform("/world", "logical_camera_over_agv1_kit_tray_1_frame", ros::Time(0), ros::Duration(100.0) );
+    // } catch (tf::TransformException &ex) {
+    //     ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
+    //     ros::Duration(1.0).sleep();
+    // }
+
+    // try {
+    //   this->tf_tray_to_world.lookupTransform("/world", "/logical_camera_over_agv1_kit_tray_1_frame", ros::Time(0), (this->_tray_to_world_2));
+    // }
+
+    // catch (tf::TransformException &ex) {
+    //   ROS_ERROR("[pick_and_place]: (lookup) %s", ex.what());
+    // }
 
     try {
-      this->tf_tray_to_world.lookupTransform("/world", "logical_camera_over_agv2_kit_tray_2_frame", ros::Time(0), (this->_tray_to_world_));
-    }
+      this->tf_tray_to_world.waitForTransform("/world", "/agv2_load_point_frame", ros::Time(0), ros::Duration(20.0) );
+      } catch (tf::TransformException &ex) {
+      ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
+      ros::Duration(1.0).sleep();
+      }
+
+   try {
+      this->tf_tray_to_world.lookupTransform("/world", "/agv2_load_point_frame", ros::Time(0), (this->_tray_to_world_));
+      }
 
     catch (tf::TransformException &ex) {
       ROS_ERROR("[pick_and_place]: (lookup) %s", ex.what());
     }
 
     try {
-        this->tf_tray_to_world.waitForTransform("/world", "logical_camera_over_agv1_kit_tray_1_frame", ros::Time(0), ros::Duration(100.0) );
-    } catch (tf::TransformException &ex) {
-        ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
-        ros::Duration(1.0).sleep();
-    }
+      this->tf_tray_to_world.waitForTransform("/world", "/agv1_load_point_frame", ros::Time(0), ros::Duration(20.0) );
+      } catch (tf::TransformException &ex) {
+      ROS_ERROR("[pick_and_place]: (wait) %s", ex.what());
+      ros::Duration(1.0).sleep();
+      }
 
-    try {
-      this->tf_tray_to_world.lookupTransform("/world", "/logical_camera_over_agv1_kit_tray_1_frame", ros::Time(0), (this->_tray_to_world_2));
-    }
+   try {
+      this->tf_tray_to_world.lookupTransform("/world", "/agv1_load_point_frame", ros::Time(0), (this->_tray_to_world_2));
+      }
 
     catch (tf::TransformException &ex) {
       ROS_ERROR("[pick_and_place]: (lookup) %s", ex.what());
     }
+
 
     try {
 	        tf_logical_to_world.waitForTransform("/world", "logical_camera_over_conveyor_frame", ros::Time(0), ros::Duration(50.0) );
@@ -68,6 +100,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
 	        ROS_ERROR("[Order Manager]: (wait) %s", ex.what());
 	        ros::Duration(50.0).sleep();
 	  }
+
 
     try {
       tf_logical_to_world.lookupTransform("/world", "logical_camera_over_conveyor_frame", ros::Time(0), (_logical_to_world_ ));
@@ -118,13 +151,13 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
         for (int i=0;i< num_parts; i++){
           std::string type_part = kit.objects[i].type;
           ROS_INFO_STREAM(type_part);
-          // ROS_INFO_STREAM(" Position x is : " << kit.objects[i].pose.position.x);
-          // ROS_INFO_STREAM(" Position y is : " << kit.objects[i].pose.position.y);
-          // ROS_INFO_STREAM(" Position z is : " << kit.objects[i].pose.position.z);
-          // ROS_INFO_STREAM(" Quternion x is : " << kit.objects[i].pose.orientation.x);
-          // ROS_INFO_STREAM(" Quternion y is : " << kit.objects[i].pose.orientation.y);
-          // ROS_INFO_STREAM(" Quternion z is : " << kit.objects[i].pose.orientation.z);
-          // ROS_INFO_STREAM(" Quternion w is : " << kit.objects[i].pose.orientation.w);
+          ROS_INFO_STREAM(" Position x is : " << kit.objects[i].pose.position.x);
+          ROS_INFO_STREAM(" Position y is : " << kit.objects[i].pose.position.y);
+          ROS_INFO_STREAM(" Position z is : " << kit.objects[i].pose.position.z);
+          ROS_INFO_STREAM(" Quternion x is : " << kit.objects[i].pose.orientation.x);
+          ROS_INFO_STREAM(" Quternion y is : " << kit.objects[i].pose.orientation.y);
+          ROS_INFO_STREAM(" Quternion z is : " << kit.objects[i].pose.orientation.z);
+          ROS_INFO_STREAM(" Quternion w is : " << kit.objects[i].pose.orientation.w);
 
           if (currKitPoses.find(type_part) == currKitPoses.end()) {
              std::queue<geometry_msgs::Pose> tempPoses;
@@ -252,6 +285,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
       targetToWorld = _tray_to_world_2 * partToTray;
     else
       targetToWorld = _tray_to_world_* partToTray;
+
  }
 
  bool OrderManager::get_next_pose(ariac_comp::request_next_pose::Request  &req, ariac_comp::request_next_pose::Response &res) {
@@ -391,6 +425,11 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
      vec2.y = targetToWorld.getOrigin().y();
      vec2.z = targetToWorld.getOrigin().z();
 
+     // Hack
+    if ((_curr_kit) % 2 == 0 && !serveHighPriority)
+      vec2.y = vec2.y - 0.15;
+    else
+      vec2.y = vec2.y + 0.15;
 
       // ROS_INFO_STREAM("part drop location x: "<< vec2.x);
       // ROS_INFO_STREAM("part drop location y: "<< vec2.y);

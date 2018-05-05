@@ -28,7 +28,7 @@ class OrderManager {
 		int _curr_kit, _curr_kit_index, _old_kit_index, _old_kit;
 		size_t erase_index;
 		tf::TransformListener tf_logical_to_world, tf_tray_to_world;
-		tf::StampedTransform _logical_to_world_, _ee_to_base_ ,_error_in_eelink, _tray_to_world_,_tray_to_world_2;
+		tf::StampedTransform _logical_to_world_, _ee_to_base_ ,_error_in_eelink, _tray_to_world_2,  _tray_to_world_;
 		tf::Transform _part_scan_pose;
 		ros::NodeHandle nh_;
 		ros::Subscriber logical_cam_belt_sub, orders_subscriber;
