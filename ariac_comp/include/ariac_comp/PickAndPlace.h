@@ -68,7 +68,7 @@ public:
 	bool pickNextPart(geometry_msgs::Vector3 obj_pose, geometry_msgs::Quaternion orientation);
 	bool pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::Quaternion obj_orientation, geometry_msgs::Vector3 target_pose, 
                       geometry_msgs::Quaternion target_orientation, bool useAGV2 = true);
-	bool pickNextPartBin(std::string partType, bool& partAvailable);
+	bool pickNextPartBin(std::string partType, bool& partAvailable, bool& partNotInReach);
 
 	bool pickNextPartConveyor(geometry_msgs::Vector3 obj_pose, geometry_msgs::Vector3 target_pose, geometry_msgs::Quaternion target_orientation,
                                         std::string partType, bool useAGV2);

@@ -136,14 +136,14 @@ void PickAndPlace::initialSetup() {
   base_link_end_values = home_joint_values;
   base_link_end_values[0] = -2.2;
   base_link_end_values[1] = -1.5;
-  base_link_end_values[2] = base_link_end_values[2] + 0.9;
-  base_link_end_values[3] = base_link_end_values[3] - 0.7;
+  base_link_end_values[2] = base_link_end_values[2] + 0.5;
+  base_link_end_values[3] = base_link_end_values[3] - 0.5;
 
   base_link_end_values_2 = home_joint_values;
   base_link_end_values_2[0] = 2.2;
   base_link_end_values_2[1] = 1.56;
-  base_link_end_values_2[2] = base_link_end_values[2] - 0.7;
-  base_link_end_values_2[3] = base_link_end_values[3] + 0.7;
+  base_link_end_values_2[2] = base_link_end_values[2] - 0.5;
+  base_link_end_values_2[3] = base_link_end_values[3] + 0.5;
 
   // Scanning Part joint values
   scan_joint_values = home_joint_values;
@@ -199,7 +199,7 @@ void PickAndPlace::initialSetup() {
     }
     else if (it->first == "gear_part"){
       binMap[it->second].z_offset_from_part = _z_offset_from_part * 1.4;
-      binMap[it->second].setResolution(0.133); 
+      binMap[it->second].setResolution(0.1); // 0.133
     }
     else if (it->first == "disk_part"){
       binMap[it->second].z_offset_from_part = _z_offset_from_part * 2;
@@ -210,7 +210,7 @@ void PickAndPlace::initialSetup() {
       binMap[it->second].setResolution(0.15);
     }
     else if (it->first == "pulley_part"){
-      binMap[it->second].z_offset_from_part = _z_offset_from_part * 7;
+      binMap[it->second].z_offset_from_part = _z_offset_from_part * 4.5;
       binMap[it->second].setResolution(0.3);
     }
     ++it;
@@ -304,7 +304,7 @@ void PickAndPlace::goToScanLocation(bool conveyorPicking) {
   _offset_vect = transform.getOrigin();
 }
 
-bool PickAndPlace::pickNextPartBin(std::string partType, bool& partAvailable) {
+bool PickAndPlace::pickNextPartBin(std::string partType, bool& partAvailable, bool& partNotInReach) {
 
   if (partLocation.find(partType) == partLocation.end()) {
     partAvailable = false;
@@ -314,7 +314,7 @@ bool PickAndPlace::pickNextPartBin(std::string partType, bool& partAvailable) {
   ROS_INFO("Picking the Next Part From Bin");
   ros::AsyncSpinner spinner(1);
   spinner.start();
-  sleep(2.0);
+  sleep(0.1);
 
   geometry_msgs::Pose target_pose1;
   target_pose1.orientation = _home_orientation;
@@ -329,34 +329,18 @@ bool PickAndPlace::pickNextPartBin(std::string partType, bool& partAvailable) {
     ROS_INFO("Gripper Service Called");
   }
  
-  // Wait for a bit 
-  // sleep(3.0);
+  target_pose1.position.x = binMap[partLocation[partType]].start_x;
+  target_pose1.position.y = binMap[partLocation[partType]].start_y;
 
+  goToJointValue(target_pose1.position.y);
   // A Logic in a Loop which tries to find the part blindly based on the bin location 
-  bool overflow = false;
-  bool retractBase = false;
-  double linear_joint_val = 0;;
-  for (int i = 0; i < 3; i++) { // At Max Three Trials
-    target_pose1.position.x = binMap[partLocation[partType]].start_x;
-    target_pose1.position.y = binMap[partLocation[partType]].start_y;
-
-    if (!retractBase) {
-      goToJointValue(target_pose1.position.y);
-      retractBase = true;
-    }
-
-    if (overflow){
-      target_pose1.position.z = binMap[partLocation[partType]].start_z + binMap[partLocation[partType]].z_offset_from_part * 2;
-     _manipulatorgroup.setPoseTarget(target_pose1);
-     _manipulatorgroup.move();
-      sleep(0.2);
-      overflow = false;
-    }
-
-    target_pose1.position.z = binMap[partLocation[partType]].start_z + binMap[partLocation[partType]].z_offset_from_part;
-   _manipulatorgroup.setPoseTarget(target_pose1);
-   _manipulatorgroup.move();
-    sleep(3);
+  double linear_joint_val = 0;
+  int i;
+  for (i = 0; i < 8; i++) { // At Max Three Trials
+     target_pose1.position.z = binMap[partLocation[partType]].start_z + binMap[partLocation[partType]].z_offset_from_part;
+    _manipulatorgroup.setPoseTarget(target_pose1);
+    _manipulatorgroup.move();
+     sleep(3);
 
     // Lift the arm a little up
     ros::spinOnce();
@@ -368,30 +352,25 @@ bool PickAndPlace::pickNextPartBin(std::string partType, bool& partAvailable) {
 
     if (_isPartAttached) {
       // binMap[partLocation[partType]].start_z = binMap[partLocation[partType]].start_z + binMap[partLocation[partType]].z_offset_from_part * 4;
-      binMap[partLocation[partType]].incStep();
+      binMap[partLocation[partType]].setPartFound();
       linear_joint_val = binMap[partLocation[partType]].start_y;
-      binMap[partLocation[partType]].x_resolution = (i+1) * binMap[partLocation[partType]].x_resolution;
-      binMap[partLocation[partType]].y_resolution = (i+1) * binMap[partLocation[partType]].y_resolution;
       break;
     }
 
-      if (!binMap[partLocation[partType]].checkOverflow()) {
-        target_pose1.position.x = target_pose1.position.x - std::abs(binMap[partLocation[partType]].x_resolution);
-        target_pose1.position.y = target_pose1.position.y + binMap[partLocation[partType]].y_resolution;
-        // target_pose1.position.z = binMap[partLocation[partType]].start_z + _z_offset_from_part * 5;
-       _manipulatorgroup.setPoseTarget(target_pose1);
-       _manipulatorgroup.move();
-        sleep(0.1);
-      } else {
-        overflow = true;
-      }
-
-     ros::spinOnce();
      binMap[partLocation[partType]].incStep();
+     target_pose1.position.x = binMap[partLocation[partType]].start_x;
+     target_pose1.position.y = binMap[partLocation[partType]].start_y;
+    _manipulatorgroup.setPoseTarget(target_pose1);
+    _manipulatorgroup.move();
+     sleep(0.1);
+     ros::spinOnce();
   }
 
   // if (i == 3) // change searching strategy
   goToJointValue(linear_joint_val);
+  if (i == 8)
+    partNotInReach = true;
+
   if (!_isPartAttached)
     return false;
 
@@ -748,7 +727,7 @@ bool PickAndPlace::place() {
   	sleep(2.0);
 
    geometry_msgs::Pose target_pose1;
-	 _manipulatorgroup.setJointValueTarget(base_link_end_values_2);
+	 _manipulatorgroup.setJointValueTarget(base_link_end_values);
 	 bool success = _manipulatorgroup.plan(my_plan);
    _manipulatorgroup.move();
    sleep(0.1);
@@ -799,7 +778,7 @@ bool PickAndPlace::place() {
     gripper_client.call(gripper_srv);
 
   // Return to the Home Position
-  	_manipulatorgroup.setJointValueTarget(base_link_end_values_2);
+  	_manipulatorgroup.setJointValueTarget(base_link_end_values);
 	   success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
     sleep(1.0);
@@ -852,7 +831,7 @@ bool PickAndPlace::place(geometry_msgs::Vector3 vec_s, geometry_msgs::Quaternion
 
    target_pose1.position.x = vec_t.x + err_x;
    target_pose1.position.y = vec_t.y + err_y;
-   target_pose1.position.z = vec_t.z + _z_offset_from_part * 8;
+   target_pose1.position.z = vec_t.z + _z_offset_from_part * 12;
 
     // Hack
    if (target_pose1.position.y > 3.335) {
@@ -1188,8 +1167,10 @@ int main(int argc, char* argv[]) {
 	PickAndPlace pickPlace(n, initialjoints, z_offset_from_part, part_location, tray_length);
 	// pickPlace.pickNextPart();
   bool test = true;
-  pickPlace.pickNextPartBin("piston_rod_part", test);
+  bool na = false;
+  pickPlace.pickNextPartBin("pulley_part", test, na);
   pickPlace.goToScanLocation();
   pickPlace.place();
 	return 0;
 }
+ 

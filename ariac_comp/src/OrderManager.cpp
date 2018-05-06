@@ -401,6 +401,12 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
 	      	res.partType = "gasket_part";
 	    }
 
+      else if(_kits_comp[_curr_kit].at(_curr_kit_index).compare("pulley_part") == 0 && _kits[_curr_kit]["pulley_part"].size() > 0) {
+         getTargetPose("pulley_part", targetToWorld);
+          _last_part_type = "pulley_part";
+          res.partType = "pulley_part";
+      }
+
 	    else {
 	      res.noPartFound = true;
 	      // ROS_INFO_STREAM(" Current Kit Size before Modified : " << _kits[_curr_kit].size());

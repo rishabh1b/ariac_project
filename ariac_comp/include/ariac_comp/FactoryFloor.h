@@ -5,9 +5,11 @@
 #include <osrf_gear/StorageUnit.h>
 
 struct Bin {
-	double x_resolution, y_resolution, orig_start_x, orig_start_y, start_x, start_y, start_z, z_offset_from_part;
+	double x_resolution, y_resolution, orig_start_x, orig_start_y;
+	double start_x, start_y, start_z, z_offset_from_part;
+	double origin_x, origin_y;
 	int curr_step;
-	bool is_res_set, is_offset_set;
+	bool is_res_set, is_offset_set, is_part_found;
 	std::string bin_name;
 
 	Bin() {
@@ -19,8 +21,22 @@ struct Bin {
 		is_res_set = false;
 	}
 
-	bool checkOverflow() {
-		return ((curr_step + 1) > (0.6 - std::abs(y_resolution)) / std::abs(y_resolution) - 1);
+	bool checkOverflowY() {
+		return (std::abs(start_y + y_resolution - orig_start_y) > 0.45);
+	}
+
+	bool checkOverflowX() {
+		return (std::abs(start_x - orig_start_x - x_resolution) > 0.45);
+	}
+
+	bool setPartFound() {
+		is_part_found = true;
+		origin_x = start_x;
+		origin_y = orig_start_y;
+		// x_resolution = (curr_step + 1) * x_resolution;
+		// y_resolution = (curr_step + 1) * y_resolution;
+		incStep();
+		curr_step = 0;
 	}
 
 	Bin(std::string bin, double start_loc_x, double start_loc_y, double start_loc_z) {
@@ -31,17 +47,29 @@ struct Bin {
 		start_z = start_loc_z;
 		bin_name = bin;
 		curr_step = 0;
+		origin_x = 0;
+		origin_y = 0;
 		is_res_set = false;
+		is_part_found = false;
 	}
+
 	void incStep() {
-		curr_step += 1;
-		start_x = start_x - std::abs(x_resolution);
-		start_y = start_y + y_resolution;
-		if (curr_step > (0.6 - std::abs(y_resolution)) / std::abs(y_resolution) - 1) {
+		if (checkOverflowX()) {
 			start_x = orig_start_x;
-			start_y = orig_start_y + 0.4;
-			y_resolution = -y_resolution;
-			curr_step = 0;
+			start_y = orig_start_y;
+		} else if (checkOverflowY()){
+			start_x = start_x - x_resolution;
+			start_y = origin_y;
+			// curr_step = 0;
+		}
+		else if (!is_part_found){
+			start_x = start_x - x_resolution;
+			start_y = start_y + y_resolution;
+			curr_step += 1;
+		}
+		else {
+			start_y = start_y + y_resolution;
+			// curr_step += 1;
 		}
 	}
 

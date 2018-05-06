@@ -14,6 +14,7 @@ OrderFullfiller::OrderFullfiller(ros::NodeHandle n) {
 	 // highPriorityServer = n.advertiseService("high_priority_om_server", &FloorManager::highPriorityService, this);
 	 pointsrv.request.request_msg = true;
 	 kit_num = 0;
+   kit_num_h = 0;
 	 useAGV2 = false;
 	 highPriorityOrderReceived = false;
 	 conveyorPickingPositionAttained = false;
@@ -51,7 +52,7 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     obj_orientation = pointsrv.response.orientation;
     target_orientation = pointsrv.response.tgtorientation;
     bool partAvailable = true;
- 
+    bool partNotInReach = false;
     if (pointsrv.response.conveyorPart) {
     	if (!pickPlace.pickNextPartConveyor(obj_pose, target_position, target_orientation, partType, useAGV2))
     		return true;
@@ -61,7 +62,7 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     	bool partPicked = false;
 
     	while (!partPicked) {
-    		if (!pickPlace.pickNextPartBin(partType, partAvailable) && partAvailable)
+    		if (!pickPlace.pickNextPartBin(partType, partAvailable, partNotInReach) && partAvailable && !partNotInReach)
     			continue;
     		else
     			break;
@@ -79,17 +80,19 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
 		return true;
 	}
 
-    if (pickPlace.isPartAttached()) {
-      pickPlace.goToScanLocation(pointsrv.response.conveyorPart);
-      if (partPoseclient.call(scanPose)) {
-      	if (!pickPlace.place(scanPose.response.pose.translation, scanPose.response.pose.rotation, target_position, target_orientation, useAGV2))
-      		return true;
-      	}
-    }
-    else
-      return true;
-    
-   }
+    if (!partNotInReach) {
+      if (pickPlace.isPartAttached()) {
+        pickPlace.goToScanLocation(pointsrv.response.conveyorPart);
+        if (partPoseclient.call(scanPose)) {
+        	if (!pickPlace.place(scanPose.response.pose.translation, scanPose.response.pose.rotation, target_position, target_orientation, useAGV2))
+        		return true;
+        	}
+      }
+      else
+        return true;
+      
+     }
+ }
    else
   {
     ROS_WARN("Service Not Ready");
@@ -99,18 +102,31 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     incrementclient.call(incPart);
 
     std::stringstream ss;
-    ss << "order_0_kit_" << kit_num;
+
+    if (!pointsrv.response.highPriority) {
+      ss << "order_0_kit_" << kit_num;
+    }
+    else {
+      ss << "order_1_kit_" << kit_num_h;
+    }
+
     std::string kit_type = ss.str();
 
     if (useAGV2 && incPart.response.success) {
 		submissionclient = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv2");
 		useAGV2 = false;
-		kit_num += 1;
+    if (!pointsrv.response.highPriority) 
+		  kit_num += 1;
+    else 
+      kit_num_h += 1;
     }
 	else if (!useAGV2 && incPart.response.success){
 		submissionclient = n.serviceClient<osrf_gear::AGVControl>("/ariac/agv1");
 		useAGV2 = true;
-		kit_num += 1;
+	  if (!pointsrv.response.highPriority)
+      kit_num += 1;
+    else 
+      kit_num_h += 1;
 	}
 
     subsrv.request.kit_type = kit_type;

@@ -19,7 +19,7 @@ private:
 	ariac_comp::request_part_scan_pose scanPose;
 	std_srvs::Trigger incPart;
     osrf_gear::AGVControl subsrv;
-	int kit_num;
+	int kit_num, kit_num_h;
 	bool useAGV2;
 	bool highPriorityOrderReceived;
 	ros::NodeHandle n;
