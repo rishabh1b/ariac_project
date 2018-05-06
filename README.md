@@ -36,13 +36,13 @@ Terminal 1 -
 ```
 $ cd ~/catkin_ws
 $ source devel/setup.bash
-$ roslaunch ariac_qual_1 gear_bringup.launch
+$ roslaunch ariac_comp gear_bringup.launch
 ```
 Terminal 2 - 
 ```
 $ cd ~/catkin_ws
 $ source devel/setup.bash
-$ roslaunch ariac_qual_1 competition.launch
+$ roslaunch ariac_comp competition.launch
 ```
 
 ## For Contributing
