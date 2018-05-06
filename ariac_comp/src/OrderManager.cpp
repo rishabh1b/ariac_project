@@ -282,9 +282,9 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
     tf::Transform partToTray(quatTarget, vect);
 
     if ((_curr_kit) % 2 == 0 && !serveHighPriority)
-      targetToWorld = _tray_to_world_2 * partToTray;
+      targetToWorld = _tray_to_world_ * partToTray;
     else
-      targetToWorld = _tray_to_world_* partToTray;
+      targetToWorld = _tray_to_world_2 * partToTray;
 
  }
 
@@ -325,10 +325,10 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
           std::vector<double> tempTimes = _conveyorPartsTime[_conveyorPartTypes[j]];
           for (size_t i = 0; i < tempTimes.size(); i++){
             double dist_travelled_part, delta_x;
-            if ((_curr_kit) % 2 == 0 && !serveHighPriority) 
+            if ((_curr_kit) % 2 == 1 || serveHighPriority) 
             	dist_travelled_part	= belt_velocity * (inPlaceRotConveyor + (ros::Time::now().toSec() - tempTimes[i]));
             else 
-            	dist_travelled_part = 2.1 - belt_velocity * (inPlaceRotConveyor + (ros::Time::now().toSec() - tempTimes[i]));
+            	dist_travelled_part = 4.2 - belt_velocity * (inPlaceRotConveyor + (ros::Time::now().toSec() - tempTimes[i]));
 
             ROS_INFO_STREAM("Distance Travelled By Part: " << dist_travelled_part);
             if (std::abs(dist_travelled_part) > acceptable_delta){
@@ -340,10 +340,17 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
               erase_index = i;
               // x = (4.5 - delta_x) / (1 + belt_velocity / avgManipSpeed);
               // x = (delta_x) / (1 + belt_velocity / avgManipSpeed);
-              delta_x = (dist_travelled_part) / (avgManipSpeed / belt_velocity - 1);
+              if ((_curr_kit) % 2 == 1 || serveHighPriority) {
+                delta_x = (dist_travelled_part) / (avgManipSpeed / belt_velocity - 1);
+                x = dist_travelled_part + delta_x;
+              }
+              else {
+                delta_x = (dist_travelled_part) / (avgManipSpeed / belt_velocity + 1);
+                x = dist_travelled_part - delta_x;
+              }
+
               _obj_type_conveyor = _conveyorPartTypes[j];
               res.partType = _obj_type_conveyor;
-              x = dist_travelled_part + delta_x;
               break;
             }
           }
@@ -432,7 +439,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
      vec2.z = targetToWorld.getOrigin().z();
 
      // Hack
-    if ((_curr_kit) % 2 == 0 && !serveHighPriority)
+    if ((_curr_kit) % 2 == 1 || serveHighPriority)
       vec2.y = vec2.y - 0.15;
     else
       vec2.y = vec2.y + 0.15;

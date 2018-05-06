@@ -56,7 +56,7 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
    _manipulatorgroup.setPlanningTime(10);
 
    // Some Offsets that I know work well for conveyor picking
-   conveyorPickOffset.insert(std::make_pair("gasket_part", 0.6));
+   conveyorPickOffset.insert(std::make_pair("gasket_part", 0.5));
    conveyorPickOffset.insert(std::make_pair("disk_part", 0.6));
    conveyorPickOffset.insert(std::make_pair("piston_rod_part", 0.05));
    conveyorPickOffset.insert(std::make_pair("gear_part", 0.08));
@@ -135,23 +135,27 @@ void PickAndPlace::initialSetup() {
   // Setup the End of BaseLink Values - joint values before dropping off the part at the end of the base link
   base_link_end_values = home_joint_values;
   base_link_end_values[0] = -2.2;
-  base_link_end_values[1] = -1.5;
+  base_link_end_values[1] = 4.719; // -1.5
   base_link_end_values[2] = base_link_end_values[2] + 0.5;
   base_link_end_values[3] = base_link_end_values[3] - 0.5;
 
   base_link_end_values_2 = home_joint_values;
   base_link_end_values_2[0] = 2.2;
-  base_link_end_values_2[1] = 1.56;
-  base_link_end_values_2[2] = base_link_end_values[2] - 0.5;
-  base_link_end_values_2[3] = base_link_end_values[3] + 0.5;
+  base_link_end_values_2[1] = 1.56; // 1.56
+  // base_link_end_values_2[2] = base_link_end_values_2[2] - 0.8;
+  // base_link_end_values_2[3] = base_link_end_values_2[3] + 0.8;
 
   // Scanning Part joint values
   scan_joint_values = home_joint_values;
   scan_joint_values[0] = 1.5;
-  scan_joint_values[1] = 0.785;
+  scan_joint_values[1] = 6.27; // 0.785 
+
+  // scan_joint_values_2 = home_joint_values;
+  // scan_joint_values_2[0] = 1.5;
+  // scan_joint_values_2[1] = 6.27; 
 
   // std::vector<double> conveyor_scan_joint_values;
-  double pose[] = {2.1, 0.0398, -0.988, 1.64, 4.0712, 4.7124, -3.1};//{1.64, 2.1, -0.988, 0.0398, 4.0712, 4.7124, -3.1};
+  double pose[] = {2.1, 6.27, -0.988, 1.64, 4.0712, 4.7124, -3.1};//{1.64, 0.0398, -0.988, 0.0398, 4.0712, 4.7124, -3.1};
   conveyor_scan_joint_values.clear();
   for(size_t i = 0; i < 7;i++){
     conveyor_scan_joint_values.push_back(pose[i]);
@@ -219,13 +223,19 @@ void PickAndPlace::initialSetup() {
 
 }
 
-void PickAndPlace::attainConveyorPick() {
+void PickAndPlace::attainConveyorPick(bool useAGV2) {
   ros::AsyncSpinner spinner(1);
   spinner.start();
   sleep(2.0);
 
-  conveyor_joint_values[0] = base_link_end_values_2[0];
-  conveyor_joint_values[1] = 0.01;
+  if (!useAGV2) {
+     conveyor_joint_values[0] = base_link_end_values_2[0];
+     conveyor_joint_values[1] = 0.01;
+  }
+  else {
+     conveyor_joint_values[0] = base_link_end_values[0];
+     conveyor_joint_values[1] = 6.27;
+  } 
 
   _manipulatorgroup.setJointValueTarget(conveyor_joint_values);
   bool success = _manipulatorgroup.plan(my_plan);
@@ -253,13 +263,21 @@ void PickAndPlace::goToScanLocation(bool conveyorPicking) {
   sleep(0.1);
 
   bool success;
-  if (!conveyorPicking) {
-    _manipulatorgroup.setJointValueTarget(scan_joint_values);
+ //  if (!conveyorPicking) {
+ //    _manipulatorgroup.setJointValueTarget(scan_joint_values);
 
-    success = _manipulatorgroup.plan(my_plan);
-    _manipulatorgroup.move();
-    sleep(1.5);
- }
+ //    success = _manipulatorgroup.plan(my_plan);
+ //    _manipulatorgroup.move();
+ //    sleep(1.5);
+ // }
+
+ // else {
+ //    _manipulatorgroup.setJointValueTarget(scan_joint_values_2);
+
+ //    success = _manipulatorgroup.plan(my_plan);
+ //    _manipulatorgroup.move();
+ //    sleep(1.5);
+ // }
 
   geometry_msgs::Pose target_pose1;
   target_pose1.orientation = _home_orientation;
@@ -727,7 +745,7 @@ bool PickAndPlace::place() {
   	sleep(2.0);
 
    geometry_msgs::Pose target_pose1;
-	 _manipulatorgroup.setJointValueTarget(base_link_end_values);
+	 _manipulatorgroup.setJointValueTarget(base_link_end_values_2);
 	 bool success = _manipulatorgroup.plan(my_plan);
    _manipulatorgroup.move();
    sleep(0.1);
@@ -778,7 +796,7 @@ bool PickAndPlace::place() {
     gripper_client.call(gripper_srv);
 
   // Return to the Home Position
-  	_manipulatorgroup.setJointValueTarget(base_link_end_values);
+  	_manipulatorgroup.setJointValueTarget(base_link_end_values_2);
 	   success = _manipulatorgroup.plan(my_plan);
     _manipulatorgroup.move();
     sleep(1.0);
@@ -799,10 +817,14 @@ bool PickAndPlace::place(geometry_msgs::Vector3 vec_s, geometry_msgs::Quaternion
 
    bool success = _manipulatorgroup.plan(my_plan);
    _manipulatorgroup.move();
-   sleep(0.1);
-   ros::spinOnce();
-   sleep(0.1);
+   // if (!useAGV2)
+   //    sleep(0.1);
+   //  else
+   //    sleep(2);
 
+   sleep(2);
+
+   ros::spinOnce();
 
    geometry_msgs::Pose target_pose1;
    target_pose1.orientation = _home_orientation;
@@ -1168,7 +1190,7 @@ int main(int argc, char* argv[]) {
 	// pickPlace.pickNextPart();
   bool test = true;
   bool na = false;
-  pickPlace.pickNextPartBin("pulley_part", test, na);
+  pickPlace.pickNextPartBin("gear_part", test, na);
   pickPlace.goToScanLocation();
   pickPlace.place();
 	return 0;

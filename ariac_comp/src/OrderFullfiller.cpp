@@ -15,7 +15,7 @@ OrderFullfiller::OrderFullfiller(ros::NodeHandle n) {
 	 pointsrv.request.request_msg = true;
 	 kit_num = 0;
    kit_num_h = 0;
-	 useAGV2 = false;
+	 useAGV2 = true;
 	 highPriorityOrderReceived = false;
 	 conveyorPickingPositionAttained = false;
 }
@@ -75,7 +75,7 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
 
     if (!partAvailable  && !conveyorPickingPositionAttained) {
 		// Go to Conveyor Position and wait
-		pickPlace.attainConveyorPick();
+		pickPlace.attainConveyorPick(useAGV2);
 		conveyorPickingPositionAttained = true;
 		return true;
 	}

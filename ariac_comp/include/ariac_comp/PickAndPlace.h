@@ -40,7 +40,7 @@ private:
 	double test_x, test_y, test_z, conveyor_x, conveyor_y, conveyor_z;
 
 	std::vector<double> home_joint_values, base_link_end_values, base_link_end_values_2; 
-	std::vector<double> return_home_joint_values, conveyor_joint_values, scan_joint_values, conveyor_scan_joint_values;
+	std::vector<double> return_home_joint_values, conveyor_joint_values, scan_joint_values, scan_joint_values_2, conveyor_scan_joint_values;
 	int index;
 	std::string _curr_part_type;
 	bool _isPartAttached, _nowExecuting, _conveyorPartPicked;
@@ -77,7 +77,7 @@ public:
 
     void goToScanLocation(bool conveyorPicking = false);
 
-    void attainConveyorPick();
+    void attainConveyorPick(bool useAGV2);
 
     bool isPartAttached();
 };
