@@ -136,8 +136,6 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
        _kits.clear();
        _kits_comp.clear();
 
-       // std_srvs::Empty highPriority;
-       // highPriorityOmClient.call(highPriority);
        serveHighPriority = true;
        changedPriority = true;
       }
@@ -151,13 +149,8 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
         for (int i=0;i< num_parts; i++){
           std::string type_part = kit.objects[i].type;
           ROS_INFO_STREAM(type_part);
-          ROS_INFO_STREAM(" Position x is : " << kit.objects[i].pose.position.x);
-          ROS_INFO_STREAM(" Position y is : " << kit.objects[i].pose.position.y);
-          ROS_INFO_STREAM(" Position z is : " << kit.objects[i].pose.position.z);
-          ROS_INFO_STREAM(" Quternion x is : " << kit.objects[i].pose.orientation.x);
-          ROS_INFO_STREAM(" Quternion y is : " << kit.objects[i].pose.orientation.y);
-          ROS_INFO_STREAM(" Quternion z is : " << kit.objects[i].pose.orientation.z);
-          ROS_INFO_STREAM(" Quternion w is : " << kit.objects[i].pose.orientation.w);
+          // ROS_INFO_STREAM(" Position x is : " << kit.objects[i].pose.position.x);
+          // ROS_INFO_STREAM(" Quternion w is : " << kit.objects[i].pose.orientation.w);
 
           if (currKitPoses.find(type_part) == currKitPoses.end()) {
              std::queue<geometry_msgs::Pose> tempPoses;
@@ -204,9 +197,6 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
         	tf::Transform part_to_logical(quat, vect);
 		    _part_scan_pose = _logical_to_world_ * part_to_logical;
 	  		
-		    // ROS_INFO_STREAM("The Part Position in world is(X): " << _part_scan_pose.getOrigin().getX());
-		    // ROS_INFO_STREAM("The Part Position in world is(Y): " << _part_scan_pose.getOrigin().getY());
-		    // ROS_INFO_STREAM("The Part Position in world is(Z): " << _part_scan_pose.getOrigin().getZ());
         }
  		
  	}
@@ -236,8 +226,6 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
         _conveyorPartTypes.push_back(obj_type_conveyor);
 
       partAdded = true;
-      ROS_WARN(" New Part Added ");
-      ROS_INFO_STREAM(" The Part Type is " << obj_type_conveyor);
 
       if (!beltVeloctiyDetermined) {
         belt_velocity = std::abs(start_pose_y - image_msg.models[index].pose.position.y) / (endTime - startTime);
@@ -316,7 +304,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
         double x = 0;
         std::list<int> erase_indices;
         for (size_t j = 0; j < _conveyorPartTypes.size() && !feasibleConveyorPartFound; j++) {
-          if (_kits[_curr_kit].find(_conveyorPartTypes[j]) != _kits[_curr_kit].end() && _kits[_curr_kit][_conveyorPartTypes[j]].size() == 0)
+          if (_kits[_curr_kit].find(_conveyorPartTypes[j]) == _kits[_curr_kit].end()) //  && _kits[_curr_kit][_conveyorPartTypes[j]].size() == 0)
               continue;
 
           if (partLocation.find(_conveyorPartTypes[j]) != partLocation.end())
@@ -330,7 +318,6 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
             else 
             	dist_travelled_part = 4.2 - belt_velocity * (inPlaceRotConveyor + (ros::Time::now().toSec() - tempTimes[i]));
 
-            ROS_INFO_STREAM("Distance Travelled By Part: " << dist_travelled_part);
             if (std::abs(dist_travelled_part) > acceptable_delta){
               erase_indices.push_back(i);
               continue;
@@ -338,8 +325,6 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
             else {
               feasibleConveyorPartFound = true;
               erase_index = i;
-              // x = (4.5 - delta_x) / (1 + belt_velocity / avgManipSpeed);
-              // x = (delta_x) / (1 + belt_velocity / avgManipSpeed);
               if ((_curr_kit) % 2 == 1 || serveHighPriority) {
                 delta_x = (dist_travelled_part) / (avgManipSpeed / belt_velocity - 1);
                 x = dist_travelled_part + delta_x;
@@ -421,9 +406,6 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
 	        _curr_kit_index += 1;
 	    }
       }
-      else {
-      	ROS_WARN(" Missed a Part!");   	
-      }
 
   	 geometry_msgs::Vector3 vec, vec2;
      geometry_msgs::Quaternion quat, quat2;
@@ -495,7 +477,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
         }
     }
 
-    if (isKitCompleted()) { //&& ros::Time::now().toSec() - start_t > 30
+    if (isKitCompleted()) { 
         response.success = true;
     	if (_old_kits.size() > 0) {
            _kits = _old_kits;

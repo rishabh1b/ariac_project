@@ -8,6 +8,8 @@
 #include <tf/transform_listener.h>
 #include <geometry_msgs/Vector3.h>
 #include <osrf_gear/VacuumGripperControl.h>
+#include <osrf_gear/LogicalCameraImage.h>
+#include <osrf_gear/Model.h>
 // #include <osrf_gear/GetMaterialLocations.h>
 #include <osrf_gear/VacuumGripperState.h>
 //#include <osrf_gear/StorageUnit.h>
@@ -23,7 +25,7 @@ private:
 	osrf_gear::VacuumGripperControl gripper_srv;
 	// osrf_gear::GetMaterialLocations mat_location_srv;
 	ros::ServiceClient gripper_client, mat_location_client;
-	ros::Subscriber gripperStateSubscriber;
+	ros::Subscriber gripperStateSubscriber, qual_subscriber_1, qual_subscriber_2;
 	double _z_offset_from_part;
 
 	moveit::planning_interface::MoveGroup _manipulatorgroup;
@@ -39,11 +41,11 @@ private:
 
 	double test_x, test_y, test_z, conveyor_x, conveyor_y, conveyor_z;
 
-	std::vector<double> home_joint_values, base_link_end_values, base_link_end_values_2; 
+	std::vector<double> home_joint_values, base_link_end_values, base_link_end_values_2, dump_joint_values, dump_joint_values_2; 
 	std::vector<double> return_home_joint_values, conveyor_joint_values, scan_joint_values, scan_joint_values_2, conveyor_scan_joint_values;
 	int index;
 	std::string _curr_part_type;
-	bool _isPartAttached, _nowExecuting, _conveyorPartPicked;
+	bool _isPartAttached, _nowExecuting, _conveyorPartPicked, _isfaultyAGV1, _isfaultyAGV2;
 	
 	std::map<std::string, std::string> partLocation;
 	std::map<std::string, Bin> binMap;
@@ -74,6 +76,8 @@ public:
                                         std::string partType, bool useAGV2);
 
     void gripperStateCallback(const osrf_gear::VacuumGripperState::ConstPtr& msg);
+    void qualSensor1(const osrf_gear::LogicalCameraImage::ConstPtr& msg);
+    void qualSensor2(const osrf_gear::LogicalCameraImage::ConstPtr& msg); 
 
     void goToScanLocation(bool conveyorPicking = false);
 

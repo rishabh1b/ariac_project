@@ -82,11 +82,15 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
 
     if (!partNotInReach) {
       if (pickPlace.isPartAttached()) {
+        if (pointsrv.response.conveyorPart)
+          pickPlace.place(scanPose.response.pose.translation, scanPose.response.pose.rotation, target_position, target_orientation, useAGV2);
+        else {
         pickPlace.goToScanLocation(pointsrv.response.conveyorPart);
         if (partPoseclient.call(scanPose)) {
         	if (!pickPlace.place(scanPose.response.pose.translation, scanPose.response.pose.rotation, target_position, target_orientation, useAGV2))
         		return true;
         	}
+        }
       }
       else
         return true;

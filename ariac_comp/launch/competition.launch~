@@ -8,8 +8,8 @@
 </include>
 
 <node pkg="ariac_comp" name="order_manager" type="order_manager_node" output = "screen">
-<param name = "manip_speed" value = "0.5" />
-<param name = "acceptable_delta" value = "0.8" />
+<param name = "manip_speed" value = "0.606" />
+<param name = "acceptable_delta" value = "1" />
 </node>
 
 <node pkg = "ariac_comp" name = "qual" type="order_fullfiller_node" output = "screen">

@@ -33,6 +33,10 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
   // Set the Gripper State Subsrciber
   gripperStateSubscriber = nh_.subscribe("/ariac/gripper/state", 10, &PickAndPlace::gripperStateCallback, this);
 
+  // Set the Quality Sensor Subscriber - 
+  qual_subscriber_1 = nh_.subscribe("/ariac/quality_control_sensor_1", 10, &PickAndPlace::qualSensor1, this);
+  qual_subscriber_2 = nh_.subscribe("/ariac/quality_control_sensor_2", 10, &PickAndPlace::qualSensor2, this);
+
   initialSetup();
 
   // For testing the pick and place routine
@@ -61,6 +65,8 @@ PickAndPlace::PickAndPlace(ros::NodeHandle nh_, double* initialjoints, double z_
    conveyorPickOffset.insert(std::make_pair("piston_rod_part", 0.05));
    conveyorPickOffset.insert(std::make_pair("gear_part", 0.08));
 
+  _isfaultyAGV2 = false;
+  _isfaultyAGV1 = false;
 }
 
 // Method to bring UR10 in proper position and orientation
@@ -145,6 +151,17 @@ void PickAndPlace::initialSetup() {
   // base_link_end_values_2[2] = base_link_end_values_2[2] - 0.8;
   // base_link_end_values_2[3] = base_link_end_values_2[3] + 0.8;
 
+  // Setup Dumping joint values
+  dump_joint_values = home_joint_values;
+  dump_joint_values[0] = -2.2;
+  dump_joint_values[1] = 3.9325; // -1.5
+  dump_joint_values[2] = dump_joint_values[2] + 0.5;
+  dump_joint_values[3] = dump_joint_values[3] - 0.5;
+
+  dump_joint_values_2 = home_joint_values;
+  dump_joint_values_2[0] = 2.2;
+  dump_joint_values_2[1] = 2.53; // 1.56 
+
   // Scanning Part joint values
   scan_joint_values = home_joint_values;
   scan_joint_values[0] = 1.5;
@@ -207,11 +224,11 @@ void PickAndPlace::initialSetup() {
     }
     else if (it->first == "disk_part"){
       binMap[it->second].z_offset_from_part = _z_offset_from_part * 2;
-      binMap[it->second].setResolution(0.15);
+      binMap[it->second].setResolution(0.1);
     }
     else if (it->first == "gasket_part") {
       binMap[it->second].z_offset_from_part = _z_offset_from_part * 1.8;
-      binMap[it->second].setResolution(0.15);
+      binMap[it->second].setResolution(0.1);
     }
     else if (it->first == "pulley_part"){
       binMap[it->second].z_offset_from_part = _z_offset_from_part * 4.5;
@@ -817,10 +834,6 @@ bool PickAndPlace::place(geometry_msgs::Vector3 vec_s, geometry_msgs::Quaternion
 
    bool success = _manipulatorgroup.plan(my_plan);
    _manipulatorgroup.move();
-   // if (!useAGV2)
-   //    sleep(0.1);
-   //  else
-   //    sleep(2);
 
    sleep(2);
 
@@ -878,53 +891,50 @@ bool PickAndPlace::place(geometry_msgs::Vector3 vec_s, geometry_msgs::Quaternion
     sleep(1.0);
 
   // Logic to correct the Place Location after Dropping in tray
-  //  if (_isPartAttached && (std::abs(err_x) > 0.01 || std::abs(err_y) > 0.01)) {
-  //   // Modify the Bin Part Model
-  //   binMap[partLocation[_curr_part_type]].x_resolution = binMap[partLocation[_curr_part_type]].x_resolution - err_x;
-  //   binMap[partLocation[_curr_part_type]].y_resolution = binMap[partLocation[_curr_part_type]].y_resolution - err_y;
-  //   // drop the part
-  //  gripper_srv.request.enable = false;
-  //  gripper_client.call(gripper_srv);
+   if (_isPartAttached && (std::abs(err_x) > 0.01 || std::abs(err_y) > 0.01) && (_curr_part_type == "gear_part")) {
+    // drop the part
+   gripper_srv.request.enable = false;
+   gripper_client.call(gripper_srv);
 
-  //  // Pick the Part again
-  //  target_pose1.position.x = vec_t.x;
-  //  target_pose1.position.y = vec_t.y;
-  //  target_pose1.position.z = vec_t.z + binMap[partLocation[_curr_part_type]].z_offset_from_part;
+   // Pick the Part again
+   target_pose1.position.x = vec_t.x;
+   target_pose1.position.y = vec_t.y;
+   target_pose1.position.z = vec_t.z + binMap[partLocation[_curr_part_type]].z_offset_from_part;
 
-  //   // Hack
-  //  // if (target_pose1.position.y > 3.335) {
-  //  //   ROS_WARN(" For some reason y position is more than 3.335");
-  //  //   target_pose1.position.y = 3.3;
-  //  // }
+    // Hack
+   if (target_pose1.position.y > 3.335) {
+     ROS_WARN(" For some reason y position is more than 3.335");
+     target_pose1.position.y = 3.3;
+   }
 
-  //  // if (target_pose1.position.y < -3.335)
-  //  //   target_pose1.position.y = -3.3;
+   if (target_pose1.position.y < -3.335)
+     target_pose1.position.y = -3.3;
 
-  // _manipulatorgroup.setPoseTarget(target_pose1);
-  //  success = _manipulatorgroup.plan(my_plan);
+  _manipulatorgroup.setPoseTarget(target_pose1);
+   success = _manipulatorgroup.plan(my_plan);
 
-  //  counter = 10;
-  //  while (!success && counter > 0) {
-  //      ROS_WARN("Plan not found for target pose drop location");
-  //     success = _manipulatorgroup.plan(my_plan);
-  //     --counter;
-  //  }
+   counter = 10;
+   while (!success && counter > 0) {
+       ROS_WARN("Plan not found for target pose drop location");
+      success = _manipulatorgroup.plan(my_plan);
+      --counter;
+   }
 
-  // _manipulatorgroup.move();
-  //  sleep(1.0);
+  _manipulatorgroup.move();
+   sleep(1.0);
 
-  //  gripper_srv.request.enable = true;
-  //  gripper_client.call(gripper_srv);
-  //  sleep(2.0);
+   gripper_srv.request.enable = true;
+   gripper_client.call(gripper_srv);
+   sleep(2.0);
    
-  //   // Lift the arm a little up
-  //   ros::spinOnce();
-  //   target_pose1.position.z = vec_t.z + binMap[partLocation[_curr_part_type]].z_offset_from_part * 4;
-  //  _manipulatorgroup.setPoseTarget(target_pose1);
-  //  _manipulatorgroup.move();
-  //   sleep(0.1);
-  //   ros::spinOnce();
-  // }
+    // Lift the arm a little up
+    ros::spinOnce();
+    target_pose1.position.z = vec_t.z + binMap[partLocation[_curr_part_type]].z_offset_from_part * 4;
+   _manipulatorgroup.setPoseTarget(target_pose1);
+   _manipulatorgroup.move();
+    sleep(0.5);
+    ros::spinOnce();
+  }
 
    if (_isPartAttached) {
    tf::Quaternion quat2(quat_s.x, quat_s.y, quat_s.z, quat_s.w);
@@ -943,6 +953,13 @@ bool PickAndPlace::place(geometry_msgs::Vector3 vec_s, geometry_msgs::Quaternion
    target_pose1.orientation.w = quat2.w(); 
 
    _manipulatorgroup.setPoseTarget(target_pose1);
+    success = _manipulatorgroup.plan(my_plan);
+   counter = 10;
+   while (!success && counter > 0) {
+       ROS_WARN("Plan not found for fixing Orientation");
+      success = _manipulatorgroup.plan(my_plan);
+      --counter;
+   }
    _manipulatorgroup.move();
     sleep(1.0);
 
@@ -951,16 +968,70 @@ bool PickAndPlace::place(geometry_msgs::Vector3 vec_s, geometry_msgs::Quaternion
     gripper_client.call(gripper_srv);
   }
 
-  // Return to the Home Position
-    if (!useAGV2)
-      _manipulatorgroup.setJointValueTarget(base_link_end_values_2);
-    else
-       _manipulatorgroup.setJointValueTarget(base_link_end_values);
+  ros::spinOnce();
+  sleep(1);
 
-     success = _manipulatorgroup.plan(my_plan);
-    _manipulatorgroup.move();
-    sleep(1.0);
+  bool faultyPartFound = false;
+  ROS_INFO_STREAM(" Faulty Part Status AGV2 : " << _isfaultyAGV2);
+
+  if (_isfaultyAGV1 || _isfaultyAGV2) {
+    faultyPartFound = true;
+   // Pick the Part again
+   target_pose1.position.x = vec_t.x;
+   target_pose1.position.y = vec_t.y;
+   target_pose1.position.z = vec_t.z + binMap[partLocation[_curr_part_type]].z_offset_from_part;
+   target_pose1.orientation = _home_orientation; 
+
+   // Hack
+   if (target_pose1.position.y > 3.335) {
+     ROS_WARN(" For some reason y position is more than 3.335");
+     target_pose1.position.y = 3.3;
+   }
+
+   if (target_pose1.position.y < -3.335)
+     target_pose1.position.y = -3.3;
+
+   _manipulatorgroup.setPoseTarget(target_pose1);
+   _manipulatorgroup.move(); 
+
+   gripper_srv.request.enable = true;
+   gripper_client.call(gripper_srv);
+   sleep(2.0);
+
+   // Lift the arm a little up
+    ros::spinOnce();
+    target_pose1.position.z = vec_t.z + binMap[partLocation[_curr_part_type]].z_offset_from_part * 4;
+   _manipulatorgroup.setPoseTarget(target_pose1);
+   _manipulatorgroup.move();
+    sleep(0.5);
+    ros::spinOnce();
+
+  if (!useAGV2)
+    _manipulatorgroup.setJointValueTarget(dump_joint_values_2);
+  else
+    _manipulatorgroup.setJointValueTarget(dump_joint_values);
+
+   bool success = _manipulatorgroup.plan(my_plan);
+   _manipulatorgroup.move();
+
+  // drop the part
+    gripper_srv.request.enable = false;
+    gripper_client.call(gripper_srv);
+  }
+
+  // Return to the Home Position
+  if (!useAGV2)
+      _manipulatorgroup.setJointValueTarget(base_link_end_values_2);
+  else
+      _manipulatorgroup.setJointValueTarget(base_link_end_values);
+
+  success = _manipulatorgroup.plan(my_plan);
+  _manipulatorgroup.move();
+  sleep(1.0);
     // goHome();
+  if (faultyPartFound)
+    return false;
+
     return true;
 }
 
@@ -1118,6 +1189,14 @@ bool PickAndPlace::pickAndPlace(geometry_msgs::Vector3 obj_pose, geometry_msgs::
 
 void PickAndPlace::gripperStateCallback(const osrf_gear::VacuumGripperState::ConstPtr& msg) {
 	_isPartAttached = msg->attached;
+}
+
+void PickAndPlace::qualSensor1(const osrf_gear::LogicalCameraImage::ConstPtr& msg) {
+  _isfaultyAGV1 = (msg->models.size() > 0);
+}
+
+void PickAndPlace::qualSensor2(const osrf_gear::LogicalCameraImage::ConstPtr& msg) {
+  _isfaultyAGV2 = (msg->models.size() > 0);
 }
 
 void PickAndPlace::setHome() {
