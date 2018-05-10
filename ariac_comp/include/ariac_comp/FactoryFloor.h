@@ -9,7 +9,7 @@ struct Bin {
 	double start_x, start_y, start_z, z_offset_from_part;
 	double origin_x, origin_y;
 	int curr_step;
-	bool is_res_set, is_offset_set, is_part_found;
+	bool is_res_set, is_offset_set, is_part_found, directionFlipped;
 	std::string bin_name;
 
 	Bin() {
@@ -37,6 +37,7 @@ struct Bin {
 		// y_resolution = (curr_step + 1) * y_resolution;
 		incStep();
 		curr_step = 0;
+		directionFlipped = false;
 	}
 
 	Bin(std::string bin, double start_loc_x, double start_loc_y, double start_loc_z) {
@@ -51,20 +52,31 @@ struct Bin {
 		origin_y = 0;
 		is_res_set = false;
 		is_part_found = false;
+		directionFlipped = false;
 	}
 
 	void incStep() {
-		if (checkOverflowX()) {
+		if (checkOverflowX() && !is_part_found) {
+			ROS_WARN(" Going For Other Diagonal ");
+			start_x = orig_start_x;
+			start_y = orig_start_y + 0.38;
+			directionFlipped = true;
+		}
+
+		else if (checkOverflowX()) {
 			start_x = orig_start_x;
 			start_y = orig_start_y;
-		} else if (checkOverflowY()){
+		} else if (checkOverflowY() && is_part_found){
 			start_x = start_x - x_resolution;
 			start_y = origin_y;
 			// curr_step = 0;
 		}
 		else if (!is_part_found){
 			start_x = start_x - x_resolution;
-			start_y = start_y + y_resolution;
+			if (!directionFlipped)
+				start_y = start_y + y_resolution;
+			else
+				start_y = start_y - y_resolution;
 			curr_step += 1;
 		}
 		else {

@@ -30,6 +30,7 @@ OrderFullfiller::OrderFullfiller(ros::NodeHandle n) {
 bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
 	// bool conveyorPartAvailable;
 
+  bool partAvailable = true;
 	if (nextPartclient.call(pointsrv))
    {
 
@@ -51,7 +52,6 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     target_position = pointsrv.response.tgtposition;
     obj_orientation = pointsrv.response.orientation;
     target_orientation = pointsrv.response.tgtorientation;
-    bool partAvailable = true;
     bool partNotInReach = false;
     if (pointsrv.response.conveyorPart) {
     	if (!pickPlace.pickNextPartConveyor(obj_pose, target_position, target_orientation, partType, useAGV2))
@@ -60,10 +60,14 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     }
     else {
     	bool partPicked = false;
-
+      int counter = 0;
     	while (!partPicked) {
-    		if (!pickPlace.pickNextPartBin(partType, partAvailable, partNotInReach) && partAvailable && !partNotInReach)
+        if (pointsrv.response.conveyorPart && counter < 2)
+          break;
+    		if (!pickPlace.pickNextPartBin(partType, partAvailable, partNotInReach) && partAvailable && !partNotInReach) {
+          ++counter;
     			continue;
+        }
     		else
     			break;
     		
@@ -82,18 +86,20 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
 
     if (!partNotInReach) {
       if (pickPlace.isPartAttached()) {
-        if (pointsrv.response.conveyorPart)
-          pickPlace.place(scanPose.response.pose.translation, scanPose.response.pose.rotation, target_position, target_orientation, useAGV2);
-        else {
+        // if (pointsrv.response.conveyorPart) {
+        //   if (!pickPlace.place(scanPose.response.pose.translation, scanPose.response.pose.rotation, target_position, target_orientation, useAGV2))
+        //     return true;
+        // }
+        // else {
         pickPlace.goToScanLocation(pointsrv.response.conveyorPart);
         if (partPoseclient.call(scanPose)) {
         	if (!pickPlace.place(scanPose.response.pose.translation, scanPose.response.pose.rotation, target_position, target_orientation, useAGV2))
         		return true;
         	}
         }
-      }
-      else
-        return true;
+      //}
+      // else
+      //   return true;
       
      }
  }
@@ -102,6 +108,9 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     ROS_WARN("Service Not Ready");
     return true;
   }
+
+    if (!partAvailable)
+      return true;
 
     incrementclient.call(incPart);
 

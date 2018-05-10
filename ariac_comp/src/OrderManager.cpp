@@ -277,6 +277,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
  }
 
  bool OrderManager::get_next_pose(ariac_comp::request_next_pose::Request  &req, ariac_comp::request_next_pose::Response &res) {
+    ROS_WARN("Getting the Next Target Pose");
     if (!_once_callback_done || (ros::Time::now().toSec() - start_t) < 5)
         return false;
 
@@ -300,7 +301,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
       conveyorPartDetected = false;
 
       bool feasibleConveyorPartFound = false;
-      if (_conveyorPartsTime.size() > 0) {
+      if (_conveyorPartsTime.size() > 0 && partLocation.find(_kits_comp[_curr_kit].at(_curr_kit_index)) == partLocation.end()) {
         double x = 0;
         std::list<int> erase_indices;
         for (size_t j = 0; j < _conveyorPartTypes.size() && !feasibleConveyorPartFound; j++) {
@@ -405,6 +406,13 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
 	      if (_kits[_curr_kit].size() > _curr_kit_index + 1)
 	        _curr_kit_index += 1;
 	    }
+      }
+
+      if (!feasibleConveyorPartFound && partLocation.find(_kits_comp[_curr_kit].at(_curr_kit_index)) == partLocation.end() && _curr_kit != 0) {
+         // Part Not Available
+        _kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].pop();
+        _curr_kit_index += 1;
+        return false;
       }
 
   	 geometry_msgs::Vector3 vec, vec2;

@@ -371,7 +371,7 @@ bool PickAndPlace::pickNextPartBin(std::string partType, bool& partAvailable, bo
   // A Logic in a Loop which tries to find the part blindly based on the bin location 
   double linear_joint_val = 0;
   int i;
-  for (i = 0; i < 8; i++) { // At Max Three Trials
+  for (i = 0; i < 20; i++) { // At Max Twenty Trials
      target_pose1.position.z = binMap[partLocation[partType]].start_z + binMap[partLocation[partType]].z_offset_from_part;
     _manipulatorgroup.setPoseTarget(target_pose1);
     _manipulatorgroup.move();
@@ -403,7 +403,7 @@ bool PickAndPlace::pickNextPartBin(std::string partType, bool& partAvailable, bo
 
   // if (i == 3) // change searching strategy
   goToJointValue(linear_joint_val);
-  if (i == 8)
+  if (i == 20)
     partNotInReach = true;
 
   if (!_isPartAttached)
@@ -516,8 +516,13 @@ bool PickAndPlace::pickNextPartConveyor(geometry_msgs::Vector3 obj_pose, geometr
 }
   if (!_isPartAttached)
     return false;
-  else
+  else {
+    target_pose1.position.z = conveyor_z + _z_offset_from_part * conveyorPickOffset[partType] * 18;
+    _manipulatorgroup.setPoseTarget(target_pose1);
+    _manipulatorgroup.move();
+    sleep(0.1);
     return true;
+  }
 }
 
 bool PickAndPlace::pickPlaceNextPartConveyor(geometry_msgs::Vector3 obj_pose, geometry_msgs::Vector3 target_pose, 
@@ -904,11 +909,11 @@ bool PickAndPlace::place(geometry_msgs::Vector3 vec_s, geometry_msgs::Quaternion
     // Hack
    if (target_pose1.position.y > 3.335) {
      ROS_WARN(" For some reason y position is more than 3.335");
-     target_pose1.position.y = 3.3;
+     target_pose1.position.y = 3.1;
    }
 
    if (target_pose1.position.y < -3.335)
-     target_pose1.position.y = -3.3;
+     target_pose1.position.y = -3.1;
 
   _manipulatorgroup.setPoseTarget(target_pose1);
    success = _manipulatorgroup.plan(my_plan);
@@ -960,8 +965,11 @@ bool PickAndPlace::place(geometry_msgs::Vector3 vec_s, geometry_msgs::Quaternion
       success = _manipulatorgroup.plan(my_plan);
       --counter;
    }
-   _manipulatorgroup.move();
-    sleep(1.0);
+    ROS_WARN(" No Success!");
+    if (success) {
+     _manipulatorgroup.move();
+      sleep(1.0);
+    }
 
     // drop the part
     gripper_srv.request.enable = false;
@@ -984,12 +992,11 @@ bool PickAndPlace::place(geometry_msgs::Vector3 vec_s, geometry_msgs::Quaternion
 
    // Hack
    if (target_pose1.position.y > 3.335) {
-     ROS_WARN(" For some reason y position is more than 3.335");
-     target_pose1.position.y = 3.3;
+     target_pose1.position.y = 3.1;
    }
 
    if (target_pose1.position.y < -3.335)
-     target_pose1.position.y = -3.3;
+     target_pose1.position.y = -3.1;
 
    _manipulatorgroup.setPoseTarget(target_pose1);
    _manipulatorgroup.move(); 
