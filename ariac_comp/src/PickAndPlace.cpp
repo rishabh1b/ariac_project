@@ -346,6 +346,8 @@ bool PickAndPlace::pickNextPartBin(std::string partType, bool& partAvailable, bo
     return true;
   }
 
+  partAvailable = true;
+
   ROS_INFO("Picking the Next Part From Bin");
   ros::AsyncSpinner spinner(1);
   spinner.start();

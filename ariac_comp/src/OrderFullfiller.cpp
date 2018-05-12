@@ -30,7 +30,7 @@ OrderFullfiller::OrderFullfiller(ros::NodeHandle n) {
 bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
 	// bool conveyorPartAvailable;
 
-  bool partAvailable = true;
+  bool partAvailable = false;
 	if (nextPartclient.call(pointsrv))
    {
 
@@ -54,6 +54,7 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
     target_orientation = pointsrv.response.tgtorientation;
     bool partNotInReach = false;
     if (pointsrv.response.conveyorPart) {
+      partAvailable = true;
     	if (!pickPlace.pickNextPartConveyor(obj_pose, target_position, target_orientation, partType, useAGV2))
     		return true;
 
