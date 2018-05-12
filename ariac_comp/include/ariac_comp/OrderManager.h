@@ -42,7 +42,7 @@ class OrderManager {
 		bool isKitCompleted();
 
 		std::string _obj_type_conveyor, _last_part_type;
-		bool conveyorPartDetected, beltVeloctiyDetermined, partAccounted, partAdded, _once_callback_done, changedPriority, serveHighPriority;
+		bool conveyorPartDetected, beltVeloctiyDetermined, partAccounted, partAdded, _once_callback_done, changedPriority, serveHighPriority, first_part_done;
 		double belt_velocity, startTime, endTime, start_pose_y, avgManipSpeed, inPlaceRotConveyor, acceptable_delta, start_t;
 	    void getTargetPose(std::string partType, tf::Transform& targetToWorld);
 

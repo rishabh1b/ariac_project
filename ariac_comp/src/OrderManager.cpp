@@ -31,6 +31,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
     inPlaceRotConveyor = 0;
     _once_callback_done = false;
     serveHighPriority = false;
+    first_part_done = false;
 
 
     // try {
@@ -214,7 +215,6 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
        partAccounted = false;
        partAdded = false;
     } else if (!image_msg.models.empty() && !partAccounted) {
-      ROS_INFO_STREAM(" The Position of part is : " << image_msg.models[index].pose.position.x);
       startTime = ros::Time::now().toSec();
       partAccounted = true;
       start_pose_y = image_msg.models[index].pose.position.y;
@@ -277,7 +277,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
  }
 
  bool OrderManager::get_next_pose(ariac_comp::request_next_pose::Request  &req, ariac_comp::request_next_pose::Response &res) {
-    ROS_WARN("Getting the Next Target Pose");
+    // ROS_WARN("Getting the Next Target Pose");
     if (!_once_callback_done || (ros::Time::now().toSec() - start_t) < 5)
         return false;
 
@@ -408,8 +408,8 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
 	    }
       }
 
-      if (!feasibleConveyorPartFound && partLocation.find(_kits_comp[_curr_kit].at(_curr_kit_index)) == partLocation.end() && _curr_kit != 0) {
-         // Part Not Available
+      if (!feasibleConveyorPartFound && partLocation.find(_kits_comp[_curr_kit].at(_curr_kit_index)) == partLocation.end() && first_part_done) { //_curr_kit != 0) {
+         // Part Not Attainable/Achievable
         _kits[_curr_kit][_kits_comp[_curr_kit].at(_curr_kit_index)].pop();
         _curr_kit_index += 1;
         return false;
@@ -470,6 +470,7 @@ OrderManager::OrderManager(ros::NodeHandle n, double avgManipSpeed, double accep
 
   bool OrderManager::incrementCompletedPart(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response) {
     ROS_WARN("Came in increment service");
+    first_part_done = true;
     if (conveyorPartDetected) {
         _kits[_curr_kit][_obj_type_conveyor].pop();
         conveyorPartDetected = false;

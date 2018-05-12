@@ -40,6 +40,7 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
    	}
 
    	if (pointsrv.response.noPartFound ) {
+      ROS_WARN(" No Part Found! ");
    		return true;
    	}	
    		
@@ -80,6 +81,7 @@ bool OrderFullfiller::manage(PickAndPlace& pickPlace) {
 
     if (!partAvailable  && !conveyorPickingPositionAttained) {
 		// Go to Conveyor Position and wait
+    ROS_WARN(" Attaining Conveyor Pick");
 		pickPlace.attainConveyorPick(useAGV2);
 		conveyorPickingPositionAttained = true;
 		return true;
