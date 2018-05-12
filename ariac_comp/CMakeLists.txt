@@ -9,7 +9,6 @@ project(ariac_comp)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   osrf_gear
-  pick_and_place
   roscpp
   sensor_msgs
   std_srvs
