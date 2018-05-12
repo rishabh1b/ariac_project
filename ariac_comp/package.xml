@@ -50,7 +50,6 @@
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>osrf_gear</build_depend>
-  <build_depend>pick_and_place</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>std_srvs</build_depend>
@@ -59,7 +58,6 @@
   <build_depend>moveit_ros_planning</build_depend>
   <build_depend>moveit_ros_planning_interface</build_depend>
   <build_export_depend>osrf_gear</build_export_depend>
-  <build_export_depend>pick_and_place</build_export_depend>
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>sensor_msgs</build_export_depend>
   <build_export_depend>std_srvs</build_export_depend>
@@ -68,7 +66,6 @@
   <build_export_depend>moveit_ros_planning</build_export_depend>
   <build_export_depend>moveit_ros_planning_interface</build_export_depend>
   <exec_depend>osrf_gear</exec_depend>
-  <exec_depend>pick_and_place</exec_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>
