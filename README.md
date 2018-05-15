@@ -44,26 +44,13 @@ $ cd ~/catkin_ws
 $ source devel/setup.bash
 $ roslaunch ariac_comp competition.launch
 ```
+## Outputs 
+| Picking From Bin  | Picking From Conveyor Belt|
+| ------------------- | ----------------- |
+| <img src="https://github.com/rishabh1b/ariac_project/blob/master/gifs/BlindPartPicking.gif">| <img src="https://github.com/rishabh1b/ariac_project/blob/master/gifs/ConveyorPicking.gif" width="400"/>|
 
-## For Contributing
-_Make sure you work in your own branch_
+| Part Placement  | Part Placement correction|
+| ------------------- | ----------------- |
+| <img src="https://github.com/rishabh1b/ariac_project/blob/master/gifs/OrientationFixing.gif">| <img src="https://github.com/rishabh1b/ariac_project/blob/master/gifs/OrientationFixingRepick.gif" width="400"/>|
 
-Follow these steps for first time -
-```
-git branch <your_branch_name>
-git push -u origin <your_branch_name>
-git checkout <your_branch_name>
-```
-Follow these steps for making changes and pushing into your branch - 
-navigate to your ```catkin_ws```
-```
-git checkout <your_branch_name>
-```
-Make whatever changes you want in your folder and push it to this repo. Make sure ```catkin_make``` runs without any errors before pushing your changes-
-
-```
-git add .
-git commit -m "A logical commit message"
-git push origin <your_branch_name>
-
-```
+The code base is capable of picking and placing the parts in correct orientation using only one logical camera.
